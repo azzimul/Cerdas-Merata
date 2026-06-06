@@ -1,10 +1,94 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cerdas Merata — Dashboard Admin</title>
+  <title>Cerdas Merata — Admin Dashboard</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .admin-panel {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .panel-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+      flex-wrap: wrap;
+    }
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-live-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-pending   { background: var(--orange); }
+    .dot-announced { background: var(--green); }
+    .status-headline {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .status-headline.announced { color: var(--green); }
+    .status-meta {
+      font-size: 13px;
+      color: var(--gray-600);
+      margin-top: 2px;
+    }
+    .status-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .quota-inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .quota-inline input[type=number] { width: 90px; }
+    #quotaMsg { font-size: 12px; }
+
+    .admin-toolbar {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .admin-toolbar select,
+    .admin-toolbar input[type=text] {
+      width: auto;
+      min-width: 120px;
+      max-width: 180px;
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+    .toolbar-sep { flex: 1; min-width: 4px; }
+    .toolbar-divider { width: 1px; height: 18px; background: var(--gray-200); margin: 0 2px; }
+
+    .stat-qual { color: var(--teal); }
+    .stat-wl   { color: var(--orange); }
+    .stat-rej  { color: var(--red); }
+    .stat-dq   { color: var(--orange); }
+    .stat-pend { color: var(--gray-400); }
+  </style>
 </head>
 <body>
 
@@ -14,9 +98,9 @@
     <span class="badge badge-orange" style="margin-left:8px; font-size:11px;">Admin</span>
   </div>
   <div class="navbar-links">
-    <a href="/">Form Pendaftar</a>
+    <a href="/apply">Applicant Form</a>
     <a href="/admin" class="active">Dashboard</a>
-    <a href="#" id="logoutBtn" style="color:var(--red);">Keluar</a>
+    <a href="#" id="logoutBtn" style="color:var(--red);">Log Out</a>
   </div>
 </nav>
 
@@ -24,15 +108,15 @@
 <div id="loginGate" style="display:none">
   <div class="page-wrap" style="max-width:380px; padding-top:60px;">
     <div class="card">
-      <div class="card-title">Login Admin</div>
+      <div class="card-title">Admin Login</div>
       <div class="form-group" style="margin-bottom:14px;">
         <label for="adminPass">Password</label>
-        <input type="password" id="adminPass" placeholder="Password admin" />
+        <input type="password" id="adminPass" placeholder="Admin password" />
       </div>
       <div id="loginErr" class="alert alert-danger" style="display:none; margin-bottom:12px;">
-        <span class="alert-icon">!</span> Password salah.
+        <span class="alert-icon">!</span> Incorrect password.
       </div>
-      <button class="btn btn-primary" style="width:100%;" id="loginBtn">Masuk</button>
+      <button class="btn btn-primary" style="width:100%;" id="loginBtn">Login</button>
     </div>
   </div>
 </div>
@@ -41,60 +125,105 @@
 <div id="dashboard" style="display:none">
 <div class="page-wide">
 
-  <div class="page-header">
-    <h1>Dashboard Admin</h1>
-    <p>Kelola waiting list, diskualifikasi, override, dan banding pendaftar.</p>
+  <!-- Status / Announcement Panel -->
+  <div id="statusPanel" class="admin-panel">
+
+    <!-- Pre-announcement state -->
+    <div id="preAnnounce">
+      <div class="panel-inner">
+        <div class="status-info">
+          <span class="status-live-dot dot-pending"></span>
+          <div>
+            <div class="status-headline">Pending Announcement</div>
+            <div class="status-meta">
+              <span id="pendingCount">—</span> applications &nbsp;·&nbsp;
+              Quota: <strong id="quotaDisplay">—</strong> &nbsp;·&nbsp;
+              Waiting list: <strong id="wlSlotsDisplay">—</strong> slots
+            </div>
+          </div>
+        </div>
+        <div class="status-controls">
+          <div class="quota-inline">
+            <input type="number" id="quotaInput" min="1" max="1000" placeholder="New quota" />
+            <button class="btn btn-ghost btn-sm" id="updateQuotaBtn">Update Quota</button>
+            <span id="quotaMsg"></span>
+          </div>
+          <button class="btn btn-primary" id="openAnnounceBtn">Announce Results</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Post-announcement state -->
+    <div id="postAnnounce" style="display:none">
+      <div class="panel-inner">
+        <div class="status-info">
+          <span class="status-live-dot dot-announced"></span>
+          <div>
+            <div class="status-headline announced">Results Published</div>
+            <div class="status-meta">
+              Qualified: <strong id="announcedQual">—</strong> &nbsp;·&nbsp;
+              Waiting List: <strong id="announcedWL">—</strong> &nbsp;·&nbsp;
+              Rejected: <strong id="announcedRej">—</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Stats -->
   <div class="stats-row" id="statsRow">
-    <div class="stat-card"><div class="stat-num" id="statTotal">-</div><div class="stat-label">Total Pendaftar</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--green)" id="statWL">-</div><div class="stat-label">Waiting List</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--red)" id="statRej">-</div><div class="stat-label">Ditolak</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--orange)" id="statDQ">-</div><div class="stat-label">Didiskualifikasi</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--purple)" id="statApp">-</div><div class="stat-label">Banding Aktif</div></div>
-    <div class="stat-card"><div class="stat-num" id="statQuota">50</div><div class="stat-label">Kuota Slot</div></div>
+    <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Total</div></div>
+    <div class="stat-card"><div class="stat-num stat-qual" id="statQual">—</div><div class="stat-label">Qualified</div></div>
+    <div class="stat-card"><div class="stat-num stat-wl" id="statWL">—</div><div class="stat-label">Waiting List</div></div>
+    <div class="stat-card"><div class="stat-num stat-rej" id="statRej">—</div><div class="stat-label">Rejected</div></div>
+    <div class="stat-card"><div class="stat-num stat-dq" id="statDQ">—</div><div class="stat-label">Disqualified</div></div>
+    <div class="stat-card"><div class="stat-num stat-pend" id="statPend">—</div><div class="stat-label">Pending</div></div>
+    <div class="stat-card"><div class="stat-num" id="statQuota">—</div><div class="stat-label">Quota</div></div>
   </div>
 
-  <!-- Filters + Actions -->
-  <div class="card" style="padding:16px 20px;">
-    <div class="filter-row">
-      <select id="filterStatus">
-        <option value="">Semua Status</option>
-        <option value="waiting_list">Waiting List</option>
-        <option value="rejected">Ditolak</option>
-        <option value="disqualified">Didiskualifikasi</option>
-        <option value="appealed">Banding</option>
-        <option value="pending">Pending</option>
-      </select>
-      <select id="filterAnomaly">
-        <option value="">Semua</option>
-        <option value="1">Anomali saja</option>
-      </select>
-      <input type="text" id="filterSearch" placeholder="Cari nama..." style="max-width:200px;" />
-      <button class="btn btn-ghost btn-sm" id="refreshBtn">Refresh</button>
-      <button class="btn btn-ghost btn-sm" id="exportBtn">Export CSV</button>
-    </div>
+  <!-- Toolbar: Filters + Actions -->
+  <div class="admin-toolbar">
+    <select id="filterStatus">
+      <option value="">All Statuses</option>
+      <option value="pending">Pending</option>
+      <option value="qualified">Qualified</option>
+      <option value="waiting_list">Waiting List</option>
+      <option value="rejected">Rejected</option>
+      <option value="disqualified">Disqualified</option>
+    </select>
+    <select id="filterAnomaly">
+      <option value="">All</option>
+      <option value="1">Has Special Condition</option>
+    </select>
+    <input type="text" id="filterSearch" placeholder="Search name..." />
+    <span class="toolbar-sep"></span>
+    <div class="toolbar-divider"></div>
+    <button class="btn btn-ghost btn-sm" id="refreshBtn">Refresh</button>
+    <button class="btn btn-ghost btn-sm" id="exportBtn">Export CSV</button>
+    <button class="btn btn-ghost btn-sm" id="openImportBtn">Import CSV</button>
+    <button class="btn btn-danger btn-sm" id="openResetBtn">Reset All</button>
   </div>
 
   <!-- Applicants Table -->
-  <div class="card" style="padding:0; overflow:hidden;">
+  <div class="card" style="padding:0; overflow:hidden; margin-bottom:0;">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th>Rank</th>
             <th>ID</th>
-            <th>Nama</th>
-            <th>Skor</th>
+            <th>Name</th>
+            <th>Score</th>
             <th>Status</th>
-            <th>Anomali</th>
-            <th>Waktu Daftar</th>
-            <th>Aksi</th>
+            <th>Special Condition</th>
+            <th>Date Applied</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="8" style="text-align:center; padding:30px; color:var(--gray-400);">Memuat data...</td></tr>
+          <tr><td colspan="8" style="text-align:center; padding:30px; color:var(--gray-400);">Loading data...</td></tr>
         </tbody>
       </table>
     </div>
@@ -103,21 +232,91 @@
 </div>
 </div>
 
+<!-- Special Condition Modal -->
+<div class="modal-backdrop" id="conditionModal">
+  <div class="modal">
+    <h3>Special Condition — <span id="conditionName"></span></h3>
+    <p style="font-size:12px; color:var(--gray-400); margin-bottom:12px;">Application ID: <span id="conditionId"></span></p>
+    <div style="background:var(--gray-100); border-radius:7px; padding:16px; font-size:14px; color:var(--gray-700); white-space:pre-wrap; line-height:1.6;" id="conditionText"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="closeConditionBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV Modal -->
+<div class="modal-backdrop" id="importModal">
+  <div class="modal">
+    <h3>Import CSV</h3>
+    <p style="font-size:13px; color:var(--gray-600); margin-bottom:16px;">
+      Upload a CSV generated by <code>generate_data.py</code>. Each row creates a new applicant account + application in <strong>pending</strong> state.<br><br>
+      All imported accounts will have password: <code>Demo@1234</code>
+    </p>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label for="importFile">CSV File</label>
+      <input type="file" id="importFile" accept=".csv" />
+    </div>
+    <div id="importResult" style="display:none; background:var(--gray-100); border-radius:7px; padding:14px; font-size:13px; margin-bottom:16px;"></div>
+    <div id="importError" class="alert alert-danger" style="display:none; margin-bottom:12px;">
+      <span class="alert-icon">!</span><span id="importErrorMsg"></span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeImportBtn">Close</button>
+      <button class="btn btn-primary" id="confirmImportBtn">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Confirm Modal -->
+<div class="modal-backdrop" id="resetModal">
+  <div class="modal">
+    <h3 style="color:var(--red);">Reset All Applications</h3>
+    <p style="font-size:13px; color:var(--gray-600); margin-bottom:16px;">
+      This will permanently delete <strong>all applications, results, and rank history</strong>. User accounts will be preserved so applicants can re-apply.<br><br>
+      <strong style="color:var(--red);">This action cannot be undone.</strong> Use only for demo/testing purposes.
+    </p>
+    <div id="resetError" class="alert alert-danger" style="display:none; margin-bottom:12px;">
+      <span class="alert-icon">!</span><span id="resetErrorMsg"></span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelResetBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmResetBtn">Reset Everything</button>
+    </div>
+  </div>
+</div>
+
+<!-- Announce Confirm Modal -->
+<div class="modal-backdrop" id="announceModal">
+  <div class="modal">
+    <h3>Announce Results</h3>
+    <p style="font-size:13px; color:var(--gray-600); margin-bottom:12px;">
+      This will assign final qualification statuses to all applicants. <strong>This action cannot be undone.</strong>
+    </p>
+    <div id="announceSummary" style="background:var(--gray-100); border-radius:7px; padding:14px; font-size:13px; margin-bottom:16px;">
+      Loading...
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelAnnounceBtn">Cancel</button>
+      <button class="btn btn-primary" id="confirmAnnounceBtn">Announce Now</button>
+    </div>
+  </div>
+</div>
+
 <!-- Disqualify Modal -->
 <div class="modal-backdrop" id="dqModal">
   <div class="modal">
-    <h3>Diskualifikasi Peserta</h3>
+    <h3>Disqualify Applicant</h3>
     <p style="font-size:13px; color:var(--gray-600); margin-bottom:12px;">
-      Peserta <strong id="dqName"></strong> (ID: <span id="dqId"></span>) akan didiskualifikasi. Semua peserta di bawahnya akan naik rank secara otomatis.<br><br>
-      <strong>Wajib</strong> mengisi alasan yang jelas dan dapat diaudit.
+      <strong id="dqName"></strong> (ID: <span id="dqId"></span>) will be disqualified. All applicants below will be automatically promoted.<br><br>
+      A clear, auditable reason is <strong>required</strong>.
     </p>
-    <textarea id="dqReason" placeholder="Contoh: Data pendapatan terbukti tidak sesuai setelah verifikasi lapangan..." rows="4" style="width:100%;"></textarea>
+    <textarea id="dqReason" placeholder="Example: Income data proven inconsistent after field verification..." rows="4" style="width:100%;"></textarea>
     <div id="dqError" class="alert alert-danger" style="display:none; margin-bottom:12px;">
       <span class="alert-icon">!</span><span id="dqErrorMsg"></span>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="closeDqBtn">Batal</button>
-      <button class="btn btn-danger" id="confirmDqBtn">Diskualifikasi</button>
+      <button class="btn btn-ghost" id="closeDqBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmDqBtn">Disqualify</button>
     </div>
   </div>
 </div>
@@ -125,24 +324,25 @@
 <!-- Override Modal -->
 <div class="modal-backdrop" id="ovModal">
   <div class="modal">
-    <h3>Override Keputusan AI</h3>
+    <h3>Override AI Decision</h3>
     <p style="font-size:13px; color:var(--gray-600); margin-bottom:12px;">
-      Ubah keputusan AI untuk <strong id="ovName"></strong> (ID: <span id="ovId"></span>). Alasan override wajib diisi dan akan dicatat permanen.
+      Override the AI decision for <strong id="ovName"></strong> (ID: <span id="ovId"></span>). Override reason is required and will be permanently recorded.
     </p>
     <div class="form-group" style="margin-bottom:12px;">
-      <label>Ubah Status Menjadi</label>
+      <label>Change Status To</label>
       <select id="ovStatus">
-        <option value="waiting_list">Waiting List (loloskan)</option>
-        <option value="rejected">Rejected (tolak)</option>
+        <option value="qualified">Qualified (approve)</option>
+        <option value="waiting_list">Waiting List</option>
+        <option value="rejected">Rejected</option>
       </select>
     </div>
-    <textarea id="ovReason" placeholder="Jelaskan alasan override..." rows="4" style="width:100%;"></textarea>
+    <textarea id="ovReason" placeholder="Explain the reason for this override..." rows="4" style="width:100%;"></textarea>
     <div id="ovError" class="alert alert-danger" style="display:none; margin-bottom:12px;">
       <span class="alert-icon">!</span><span id="ovErrorMsg"></span>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="closeOvBtn">Batal</button>
-      <button class="btn btn-warning" id="confirmOvBtn">Simpan Override</button>
+      <button class="btn btn-ghost" id="closeOvBtn">Cancel</button>
+      <button class="btn btn-warning" id="confirmOvBtn">Save Override</button>
     </div>
   </div>
 </div>
@@ -151,19 +351,19 @@
 <div class="modal-backdrop" id="traceModal">
   <div class="modal" style="max-width:600px; max-height:85vh; overflow-y:auto;">
     <h3>Reasoning Trace — <span id="traceModalName"></span></h3>
-    <p style="font-size:12px; color:var(--gray-400); margin-bottom:16px;">ID Aplikasi: <span id="traceModalId"></span></p>
+    <p style="font-size:12px; color:var(--gray-400); margin-bottom:16px;">Application ID: <span id="traceModalId"></span></p>
     <div id="traceModalContent"></div>
     <div class="modal-actions" style="margin-top:16px;">
-      <button class="btn btn-ghost" id="closeTraceBtn">Tutup</button>
+      <button class="btn btn-ghost" id="closeTraceBtn">Close</button>
     </div>
   </div>
 </div>
 
 <script src="api.js"></script>
 <script>
-  const ADMIN_PASS = "admin123";
   const CATEGORIES = ["kemiskinan", "tanggungan", "infrastruktur", "sosial", "prestasi"];
   let allApplicants = [];
+  let currentStats  = {};
   let pendingDqId = null, pendingOvId = null;
 
   // ── Auth ────────────────────────────────────────────────
@@ -180,13 +380,14 @@
     loadData();
   }
 
-  document.getElementById("loginBtn").addEventListener("click", () => {
+  document.getElementById("loginBtn").addEventListener("click", async () => {
     const pass = document.getElementById("adminPass").value;
-    if (pass === ADMIN_PASS) {
+    try {
+      await api.adminLogin(pass);
       sessionStorage.setItem("cm_admin", "1");
       document.getElementById("loginErr").style.display = "none";
       showDashboard();
-    } else {
+    } catch {
       document.getElementById("loginErr").style.display = "flex";
     }
   });
@@ -203,40 +404,53 @@
   async function loadData() {
     try {
       const [list, stats] = await Promise.all([api.adminList(), api.stats()]);
-      allApplicants = list.applicants || list;
-      renderStats(stats || computeStats(allApplicants));
+      allApplicants = Array.isArray(list) ? list : (list.applicants || []);
+      currentStats  = stats;
+      renderStats(stats);
+      renderAnnouncePanel(stats);
       renderTable(allApplicants);
     } catch (err) {
-      document.getElementById("tableBody").innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--red);">Gagal memuat: ${err.message}</td></tr>`;
+      document.getElementById("tableBody").innerHTML =
+        `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--red);">Failed to load: ${err.message}</td></tr>`;
     }
   }
 
-  function computeStats(data) {
-    return {
-      total: data.length,
-      waiting_list: data.filter(a => a.status_aplikasi === "waiting_list").length,
-      rejected: data.filter(a => a.status_aplikasi === "rejected").length,
-      disqualified: data.filter(a => a.status_aplikasi === "disqualified").length,
-      appealed: data.filter(a => a.status_aplikasi === "appealed").length,
-    };
+  function renderStats(s) {
+    document.getElementById("statTotal").textContent = s.total        ?? "—";
+    document.getElementById("statQual").textContent  = s.qualified    ?? "—";
+    document.getElementById("statWL").textContent    = s.waiting_list ?? "—";
+    document.getElementById("statRej").textContent   = s.rejected     ?? "—";
+    document.getElementById("statDQ").textContent    = s.disqualified ?? "—";
+    document.getElementById("statPend").textContent  = s.pending      ?? "—";
+    document.getElementById("statQuota").textContent = s.quota        ?? "—";
   }
 
-  function renderStats(s) {
-    document.getElementById("statTotal").textContent = s.total ?? "-";
-    document.getElementById("statWL").textContent    = s.waiting_list ?? "-";
-    document.getElementById("statRej").textContent   = s.rejected ?? "-";
-    document.getElementById("statDQ").textContent    = s.disqualified ?? "-";
-    document.getElementById("statApp").textContent   = s.appealed ?? "-";
+  function renderAnnouncePanel(s) {
+    const preEl  = document.getElementById("preAnnounce");
+    const postEl = document.getElementById("postAnnounce");
+    if (s.announced) {
+      preEl.style.display  = "none";
+      postEl.style.display = "block";
+      document.getElementById("announcedQual").textContent = s.qualified    ?? 0;
+      document.getElementById("announcedWL").textContent   = s.waiting_list ?? 0;
+      document.getElementById("announcedRej").textContent  = s.rejected     ?? 0;
+    } else {
+      preEl.style.display  = "block";
+      postEl.style.display = "none";
+      document.getElementById("pendingCount").textContent  = s.pending ?? 0;
+      document.getElementById("quotaDisplay").textContent  = s.quota   ?? 50;
+      document.getElementById("wlSlotsDisplay").textContent = Math.ceil((s.quota ?? 50) * 0.20);
+    }
   }
 
   function filterApplicants() {
-    const status = document.getElementById("filterStatus").value;
+    const status  = document.getElementById("filterStatus").value;
     const anomaly = document.getElementById("filterAnomaly").value;
-    const search = document.getElementById("filterSearch").value.toLowerCase();
+    const search  = document.getElementById("filterSearch").value.toLowerCase();
     return allApplicants.filter(a => {
-      if (status && a.status_aplikasi !== status) return false;
-      if (anomaly === "1" && !a.is_anomaly) return false;
-      if (search && !a.nama_pendaftar?.toLowerCase().includes(search)) return false;
+      if (status  && a.status_aplikasi !== status) return false;
+      if (anomaly === "1" && !a.kondisi_khusus)    return false;
+      if (search  && !a.nama_pendaftar?.toLowerCase().includes(search)) return false;
       return true;
     });
   }
@@ -244,7 +458,7 @@
   function renderTable(data) {
     const tbody = document.getElementById("tableBody");
     if (!data.length) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--gray-400);">Tidak ada data.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--gray-400);">No data found.</td></tr>`;
       return;
     }
     tbody.innerHTML = data.map(a => `
@@ -254,13 +468,15 @@
         <td><strong>${a.nama_pendaftar}</strong></td>
         <td><strong>${a.total_skor ?? "—"}</strong></td>
         <td>${statusBadge(a.status_aplikasi)}</td>
-        <td>${a.is_anomaly ? '<span class="badge badge-orange">Anomali</span>' : '<span class="text-muted">—</span>'}</td>
-        <td class="text-muted">${a.created_at ? new Date(a.created_at).toLocaleDateString("id-ID") : "—"}</td>
+        <td>${a.kondisi_khusus
+              ? `<button class="btn btn-ghost btn-sm" onclick="openCondition(${a.id}, '${escStr(a.nama_pendaftar)}', '${escStr(a.kondisi_khusus)}')">View</button>`
+              : '<span class="text-muted">—</span>'}</td>
+        <td class="text-muted">${a.created_at ? new Date(a.created_at).toLocaleDateString("en-GB") : "—"}</td>
         <td>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <div style="display:flex; gap:4px;">
             <button class="btn btn-ghost btn-sm" onclick="openTrace(${a.id})">Trace</button>
             ${a.status_aplikasi !== "disqualified"
-              ? `<button class="btn btn-danger btn-sm" onclick="openDq(${a.id}, '${escStr(a.nama_pendaftar)}')">Diskualifikasi</button>`
+              ? `<button class="btn btn-danger btn-sm" onclick="openDq(${a.id}, '${escStr(a.nama_pendaftar)}')">Disqualify</button>`
               : ""}
             <button class="btn btn-warning btn-sm" onclick="openOv(${a.id}, '${escStr(a.nama_pendaftar)}')">Override</button>
           </div>
@@ -270,28 +486,89 @@
 
   function escStr(s) { return (s || "").replace(/'/g, "\\'"); }
 
-  // ── Filters live ────────────────────────────────────────
   ["filterStatus", "filterAnomaly", "filterSearch"].forEach(id => {
     document.getElementById(id).addEventListener("input", () => renderTable(filterApplicants()));
   });
   document.getElementById("refreshBtn").addEventListener("click", loadData);
   document.getElementById("exportBtn").addEventListener("click", () => api.exportCSV());
 
+  // ── Quota Update ─────────────────────────────────────────
+  document.getElementById("updateQuotaBtn").addEventListener("click", async () => {
+    const val   = parseInt(document.getElementById("quotaInput").value);
+    const msgEl = document.getElementById("quotaMsg");
+    if (!val || val < 1) {
+      msgEl.textContent = "Min 1";
+      msgEl.style.color = "var(--red)";
+      msgEl.style.display = "inline";
+      return;
+    }
+    const btn = document.getElementById("updateQuotaBtn");
+    btn.disabled = true;
+    try {
+      await api.updateQuota(val);
+      msgEl.textContent = `Updated to ${val}`;
+      msgEl.style.color = "var(--green)";
+      msgEl.style.display = "inline";
+      document.getElementById("quotaInput").value = "";
+      loadData();
+    } catch (err) {
+      msgEl.textContent = err.message;
+      msgEl.style.color = "var(--red)";
+      msgEl.style.display = "inline";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ── Announce Modal ────────────────────────────────────────
+  function openAnnounceModal() {
+    const s      = currentStats;
+    const wlSlots = Math.ceil((s.quota || 50) * 0.20);
+    document.getElementById("announceSummary").innerHTML = `
+      <strong>Summary preview</strong><br>
+      Total applications: <strong>${s.pending ?? 0}</strong><br>
+      Qualified slots: <strong>${s.quota ?? 50}</strong><br>
+      Waiting list slots: <strong>${wlSlots}</strong> (20% of quota)<br>
+      <span style="color:var(--orange); font-weight:600; margin-top:6px; display:block;">This action is irreversible.</span>`;
+    document.getElementById("announceModal").classList.add("open");
+  }
+
+  document.getElementById("openAnnounceBtn").addEventListener("click", openAnnounceModal);
+  document.getElementById("cancelAnnounceBtn").addEventListener("click", () =>
+    document.getElementById("announceModal").classList.remove("open"));
+
+  document.getElementById("confirmAnnounceBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("confirmAnnounceBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Announcing...';
+    try {
+      await api.announce();
+      document.getElementById("announceModal").classList.remove("open");
+      loadData();
+    } catch (err) {
+      alert("Error: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Announce Now";
+    }
+  });
+
   // ── Disqualify Modal ─────────────────────────────────────
   function openDq(id, name) {
     pendingDqId = id;
-    document.getElementById("dqId").textContent = id;
+    document.getElementById("dqId").textContent   = id;
     document.getElementById("dqName").textContent = name;
-    document.getElementById("dqReason").value = "";
+    document.getElementById("dqReason").value     = "";
     document.getElementById("dqError").style.display = "none";
     document.getElementById("dqModal").classList.add("open");
   }
-  document.getElementById("closeDqBtn").addEventListener("click", () => document.getElementById("dqModal").classList.remove("open"));
+  document.getElementById("closeDqBtn").addEventListener("click", () =>
+    document.getElementById("dqModal").classList.remove("open"));
 
   document.getElementById("confirmDqBtn").addEventListener("click", async () => {
     const reason = document.getElementById("dqReason").value.trim();
     if (!reason) {
-      document.getElementById("dqErrorMsg").textContent = "Alasan wajib diisi.";
+      document.getElementById("dqErrorMsg").textContent = "Reason is required.";
       document.getElementById("dqError").style.display = "flex";
       return;
     }
@@ -305,26 +582,27 @@
       document.getElementById("dqErrorMsg").textContent = err.message;
       document.getElementById("dqError").style.display = "flex";
     } finally {
-      btn.disabled = false; btn.textContent = "Diskualifikasi";
+      btn.disabled = false; btn.textContent = "Disqualify";
     }
   });
 
   // ── Override Modal ───────────────────────────────────────
   function openOv(id, name) {
     pendingOvId = id;
-    document.getElementById("ovId").textContent = id;
+    document.getElementById("ovId").textContent   = id;
     document.getElementById("ovName").textContent = name;
-    document.getElementById("ovReason").value = "";
+    document.getElementById("ovReason").value     = "";
     document.getElementById("ovError").style.display = "none";
     document.getElementById("ovModal").classList.add("open");
   }
-  document.getElementById("closeOvBtn").addEventListener("click", () => document.getElementById("ovModal").classList.remove("open"));
+  document.getElementById("closeOvBtn").addEventListener("click", () =>
+    document.getElementById("ovModal").classList.remove("open"));
 
   document.getElementById("confirmOvBtn").addEventListener("click", async () => {
     const reason = document.getElementById("ovReason").value.trim();
     const status = document.getElementById("ovStatus").value;
     if (!reason) {
-      document.getElementById("ovErrorMsg").textContent = "Alasan wajib diisi.";
+      document.getElementById("ovErrorMsg").textContent = "Reason is required.";
       document.getElementById("ovError").style.display = "flex";
       return;
     }
@@ -338,22 +616,34 @@
       document.getElementById("ovErrorMsg").textContent = err.message;
       document.getElementById("ovError").style.display = "flex";
     } finally {
-      btn.disabled = false; btn.textContent = "Simpan Override";
+      btn.disabled = false; btn.textContent = "Save Override";
     }
   });
 
   // ── Trace Modal ──────────────────────────────────────────
   async function openTrace(id) {
     document.getElementById("traceModal").classList.add("open");
-    document.getElementById("traceModalContent").innerHTML = '<p style="color:var(--gray-400); text-align:center; padding:20px;">Memuat...</p>';
+    document.getElementById("traceModalContent").innerHTML =
+      '<p style="color:var(--gray-400); text-align:center; padding:20px;">Loading...</p>';
     try {
-      const data = await api.getResult(id);
+      const data = await apiFetchAdmin(`/result/${id}`);
       document.getElementById("traceModalName").textContent = data.nama_pendaftar;
-      document.getElementById("traceModalId").textContent = "#" + id;
-      document.getElementById("traceModalContent").innerHTML = renderTraceHTML(data.reasoning_trace, data.skor_per_kategori);
+      document.getElementById("traceModalId").textContent   = "#" + id;
+      document.getElementById("traceModalContent").innerHTML =
+        renderTraceHTML(data.reasoning_trace || [], data.skor_per_kategori || {});
     } catch (err) {
-      document.getElementById("traceModalContent").innerHTML = `<p style="color:var(--red);">Gagal memuat: ${err.message}</p>`;
+      document.getElementById("traceModalContent").innerHTML =
+        `<p style="color:var(--red);">Failed to load: ${err.message}</p>`;
     }
+  }
+
+  async function apiFetchAdmin(path) {
+    const res  = await fetch("http://localhost:5000/api" + path, {
+      headers: { "Content-Type": "application/json", "X-Admin-View": "1" },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
   }
 
   function renderTraceHTML(trace, skor_per_kategori) {
@@ -363,24 +653,99 @@
 
     return CATEGORIES.map(cat => {
       const rules = byCategory[cat];
-      const pts = skor_per_kategori?.[cat] ?? rules.reduce((s, r) => s + r.points, 0);
-      const sign = pts >= 0 ? "+" : "";
-      const header = `<div class="trace-cat-header ${catClass(cat)}">${catLabel(cat)}<span>${sign}${pts} poin</span></div>`;
-      const body = rules.length
+      const pts   = skor_per_kategori?.[cat] ?? rules.reduce((s, r) => s + r.points, 0);
+      const sign  = pts >= 0 ? "+" : "";
+      const header = `<div class="trace-cat-header ${catClass(cat)}">${catLabel(cat)}<span>${sign}${pts} pts</span></div>`;
+      const body   = rules.length
         ? rules.map(r => `
             <div class="trace-rule">
               <div>
                 <div class="trace-rule-id">[${r.rule_id}] ${r.label}</div>
                 <div class="trace-rule-desc">${r.description}</div>
               </div>
-              <span class="trace-pts ${r.points >= 0 ? 'pos' : 'neg'}">${r.points >= 0 ? '+' : ''}${r.points}</span>
+              <span class="trace-pts ${r.points >= 0 ? "pos" : "neg"}">${r.points >= 0 ? "+" : ""}${r.points}</span>
             </div>`).join("")
-        : `<div class="trace-empty">Tidak ada aturan aktif.</div>`;
+        : `<div class="trace-empty">No active rules for this category.</div>`;
       return `<div class="trace-category"><div class="trace-rules">${header}${body}</div></div>`;
     }).join("");
   }
 
-  document.getElementById("closeTraceBtn").addEventListener("click", () => document.getElementById("traceModal").classList.remove("open"));
+  document.getElementById("closeTraceBtn").addEventListener("click", () =>
+    document.getElementById("traceModal").classList.remove("open"));
+
+  // ── Special Condition Modal ──────────────────────────────
+  function openCondition(id, name, text) {
+    document.getElementById("conditionId").textContent   = "#" + id;
+    document.getElementById("conditionName").textContent = name;
+    document.getElementById("conditionText").textContent = text;
+    document.getElementById("conditionModal").classList.add("open");
+  }
+  document.getElementById("closeConditionBtn").addEventListener("click", () =>
+    document.getElementById("conditionModal").classList.remove("open"));
+
+  // ── Reset Modal ──────────────────────────────────────────
+  document.getElementById("openResetBtn").addEventListener("click", () => {
+    document.getElementById("resetError").style.display = "none";
+    document.getElementById("resetModal").classList.add("open");
+  });
+  document.getElementById("cancelResetBtn").addEventListener("click", () =>
+    document.getElementById("resetModal").classList.remove("open"));
+
+  document.getElementById("confirmResetBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("confirmResetBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Resetting...';
+    try {
+      await api.resetApps();
+      document.getElementById("resetModal").classList.remove("open");
+      loadData();
+    } catch (err) {
+      document.getElementById("resetErrorMsg").textContent = err.message;
+      document.getElementById("resetError").style.display = "flex";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Reset Everything";
+    }
+  });
+
+  // ── Import CSV Modal ─────────────────────────────────────
+  document.getElementById("openImportBtn").addEventListener("click", () => {
+    document.getElementById("importFile").value = "";
+    document.getElementById("importResult").style.display = "none";
+    document.getElementById("importError").style.display = "none";
+    document.getElementById("importModal").classList.add("open");
+  });
+  document.getElementById("closeImportBtn").addEventListener("click", () =>
+    document.getElementById("importModal").classList.remove("open"));
+
+  document.getElementById("confirmImportBtn").addEventListener("click", async () => {
+    const fileInput = document.getElementById("importFile");
+    if (!fileInput.files.length) {
+      document.getElementById("importErrorMsg").textContent = "Please select a CSV file.";
+      document.getElementById("importError").style.display = "flex";
+      return;
+    }
+    const btn = document.getElementById("confirmImportBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Importing...';
+    document.getElementById("importError").style.display = "none";
+    try {
+      const result = await api.importCSV(fileInput.files[0]);
+      const errList = result.errors && result.errors.length
+        ? `<br><br><strong>Errors (first ${result.errors.length}):</strong><ul style="margin:6px 0 0 16px; color:var(--red);">${result.errors.map(e => `<li>${e}</li>`).join("")}</ul>`
+        : "";
+      const resultDiv = document.getElementById("importResult");
+      resultDiv.innerHTML = `<strong style="color:var(--green);">Import complete</strong><br>Imported: <strong>${result.imported}</strong> &nbsp;·&nbsp; Skipped: <strong>${result.skipped}</strong>${errList}`;
+      resultDiv.style.display = "block";
+      loadData();
+    } catch (err) {
+      document.getElementById("importErrorMsg").textContent = err.message;
+      document.getElementById("importError").style.display = "flex";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Import";
+    }
+  });
 
   // ── Init ─────────────────────────────────────────────────
   isLoggedIn() ? showDashboard() : showLoginGate();

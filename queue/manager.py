@@ -1,33 +1,37 @@
 """
-Waiting List Queue Manager — Cerdas Merata v1.3
+Waiting List Queue Manager — Cerdas Merata v2.0
 
 Core logic (in-memory, db-agnostic):
-  - rerank_all()     : urutkan semua pendaftar berdasarkan skor, tetapkan rank + status
-  - disqualify()     : tandai peserta sebagai disqualified, naikkan rank semua di bawahnya
+  - rerank_all()     : sort applicants by score, assign rank + status
+  - disqualify()     : mark applicant disqualified, promote those below
 
-DB layer (opsional, psycopg2):
-  - db_rerank_all()
-  - db_disqualify()
+DB layer (psycopg2 / sqlite3 compatible):
+  - db_rank_and_announce()   : batch-assign qualified/waiting_list/rejected + set announced flag
+  - db_rerank_post_announce(): same ranking without touching the announced flag (for disqualify cascade)
+  - db_disqualify()          : disqualify in DB, cascade-promote remaining
 """
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 from datetime import datetime, timezone
+import math
 
 
 DEFAULT_QUOTA = 50
 
+STATUS_QUALIFIED     = "qualified"
 STATUS_WAITING_LIST  = "waiting_list"
 STATUS_REJECTED      = "rejected"
 STATUS_DISQUALIFIED  = "disqualified"
+STATUS_PENDING       = "pending"
 
 
 @dataclass
 class Applicant:
     application_id: int
     total_skor: int
-    status: str = STATUS_REJECTED
+    status: str = STATUS_PENDING
     queue_rank: Optional[int] = None
     disqualify_reason: Optional[str] = None
 
@@ -50,6 +54,26 @@ class DisqualifyResult:
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _waiting_list_slots(quota: int) -> int:
+    """Number of waiting-list slots = 20% of quota (rounded up)."""
+    return math.ceil(quota * 0.20)
+
+
+def _assign_status(rank: int, quota: int) -> tuple[str, Optional[int]]:
+    """Return (status, queue_rank) for a 1-based rank position."""
+    wl_slots = _waiting_list_slots(quota)
+    if rank <= quota:
+        return STATUS_QUALIFIED, rank
+    elif rank <= quota + wl_slots:
+        return STATUS_WAITING_LIST, rank
+    else:
+        return STATUS_REJECTED, None
+
+
+# ---------------------------------------------------------------------------
 # Core in-memory logic
 # ---------------------------------------------------------------------------
 
@@ -58,22 +82,18 @@ def rerank_all(
     quota: int = DEFAULT_QUOTA,
 ) -> list[Applicant]:
     """
-    Urutkan semua pendaftar berdasarkan skor (descending), tetapkan rank + status.
-    Peserta yang sudah disqualified dikeluarkan dari hitungan slot.
-
-    Returns list yang sama (in-place mutation) untuk kemudahan chaining.
+    Sort all applicants by score (descending), assign rank + status.
+    Disqualified applicants are excluded from slot calculation.
+    Mutates the list in-place and returns it.
     """
     eligible = [a for a in applicants if a.status != STATUS_DISQUALIFIED]
     eligible.sort(key=lambda a: a.total_skor, reverse=True)
 
     for rank_zero, applicant in enumerate(eligible):
         rank = rank_zero + 1
-        if rank <= quota:
-            applicant.queue_rank = rank
-            applicant.status = STATUS_WAITING_LIST
-        else:
-            applicant.queue_rank = None
-            applicant.status = STATUS_REJECTED
+        status, q_rank = _assign_status(rank, quota)
+        applicant.queue_rank = q_rank
+        applicant.status = status
 
     return applicants
 
@@ -86,24 +106,22 @@ def disqualify(
     quota: int = DEFAULT_QUOTA,
 ) -> DisqualifyResult:
     """
-    Tandai peserta sebagai disqualified, lalu naikkan rank semua peserta di bawahnya.
-    Peserta di luar 50 besar yang naik ke dalam kuota mendapat status waiting_list.
+    Mark applicant as disqualified, then re-rank everyone remaining.
+    Anyone outside quota who enters qualified/waiting_list is tracked as promoted.
 
     Raises:
-        ValueError: jika application_id tidak ditemukan atau sudah disqualified
+        ValueError: if application_id not found or already disqualified
     """
     target = next((a for a in applicants if a.application_id == application_id), None)
     if target is None:
-        raise ValueError(f"Aplikasi {application_id} tidak ditemukan.")
+        raise ValueError(f"Application {application_id} not found.")
     if target.status == STATUS_DISQUALIFIED:
-        raise ValueError(f"Aplikasi {application_id} sudah berstatus disqualified.")
+        raise ValueError(f"Application {application_id} is already disqualified.")
 
-    old_rank = target.queue_rank
     target.status = STATUS_DISQUALIFIED
     target.disqualify_reason = reason
     target.queue_rank = None
 
-    # Semua peserta aktif (bukan disqualified) yang punya rank, urutkan ulang
     eligible = sorted(
         [a for a in applicants if a.status != STATUS_DISQUALIFIED],
         key=lambda a: a.total_skor,
@@ -115,24 +133,24 @@ def disqualify(
 
     for rank_zero, applicant in enumerate(eligible):
         new_rank = rank_zero + 1
-        old = applicant.queue_rank
+        old_rank = applicant.queue_rank
+        new_status, new_q_rank = _assign_status(new_rank, quota)
 
-        if old != new_rank:
-            # Catat perubahan jika rank berubah DAN ada kaitannya dengan diskualifikasi
-            if old is not None or new_rank <= quota:
+        if old_rank != new_q_rank:
+            if old_rank is not None or new_q_rank is not None:
                 promoted.append(RankChange(
                     application_id=applicant.application_id,
-                    rank_lama=old if old is not None else new_rank + 1,
-                    rank_baru=new_rank,
+                    rank_lama=old_rank if old_rank is not None else new_rank + 1,
+                    rank_baru=new_q_rank if new_q_rank is not None else old_rank + 1,
                     triggered_by=application_id,
                     admin_id=admin_id,
                 ))
 
-            if old is None and new_rank <= quota:
+            if old_rank is None and new_q_rank is not None:
                 newly_entered = applicant.application_id
 
-        applicant.queue_rank = new_rank if new_rank <= quota else None
-        applicant.status = STATUS_WAITING_LIST if new_rank <= quota else STATUS_REJECTED
+        applicant.queue_rank = new_q_rank
+        applicant.status = new_status
 
     return DisqualifyResult(
         disqualified_id=application_id,
@@ -157,10 +175,28 @@ def _q(sql: str, conn) -> str:
     return sql
 
 
-def db_rerank_all(conn, quota: int = DEFAULT_QUOTA) -> None:
+def _is_sqlite(conn) -> bool:
+    return "sqlite3" in type(conn).__module__
+
+
+def _rerank_updates(rows: list, quota: int) -> list[tuple]:
     """
-    Baca semua pendaftar aktif dari DB, hitung ulang rank, update ke DB.
-    Dipanggil setelah ada pendaftar baru masuk.
+    Given sorted (app_id, score) rows, return list of (status, queue_rank, app_id) updates.
+    """
+    updates = []
+    for rank_zero, (app_id, _) in enumerate(rows):
+        rank = rank_zero + 1
+        status, q_rank = _assign_status(rank, quota)
+        updates.append((status, q_rank, app_id))
+    return updates
+
+
+def db_rank_and_announce(conn, quota: int = DEFAULT_QUOTA) -> dict:
+    """
+    Batch-assign qualified/waiting_list/rejected to all non-disqualified applicants,
+    then set results_announced=true in system_config. Atomic commit.
+
+    Returns dict with counts: {qualified, waiting_list, rejected}
     """
     cur = conn.cursor()
     cur.execute(_q("""
@@ -172,20 +208,62 @@ def db_rerank_all(conn, quota: int = DEFAULT_QUOTA) -> None:
     """, conn), (STATUS_DISQUALIFIED,))
     rows = cur.fetchall()
 
-    updates = []
-    for rank_zero, (app_id, _) in enumerate(rows):
-        rank = rank_zero + 1
-        if rank <= quota:
-            updates.append((STATUS_WAITING_LIST, rank, app_id))
-        else:
-            updates.append((STATUS_REJECTED, None, app_id))
+    updates = _rerank_updates(rows, quota)
 
     cur.executemany(_q("""
-        UPDATE applications
-        SET status_aplikasi = %s, queue_rank = %s
-        WHERE id = %s
+        UPDATE applications SET status_aplikasi = %s, queue_rank = %s WHERE id = %s
     """, conn), updates)
+
+    cur.executemany(_q("""
+        UPDATE results SET status_keputusan = %s WHERE application_id = %s
+    """, conn), [(s, app_id) for s, _, app_id in updates])
+
+    # Set announced flag
+    now = datetime.now(timezone.utc).isoformat()
+    cur.execute(_q("""
+        UPDATE system_config SET value = 'true', updated_at = %s WHERE key = 'results_announced'
+    """, conn), (now,))
+
     conn.commit()
+
+    counts = {STATUS_QUALIFIED: 0, STATUS_WAITING_LIST: 0, STATUS_REJECTED: 0}
+    for status, _, _ in updates:
+        counts[status] = counts.get(status, 0) + 1
+
+    return counts
+
+
+def db_rerank_post_announce(conn, quota: int = DEFAULT_QUOTA) -> None:
+    """
+    Re-assign qualified/waiting_list/rejected after a disqualification.
+    Does NOT change the announced flag.
+    """
+    cur = conn.cursor()
+    cur.execute(_q("""
+        SELECT a.id, r.total_skor
+        FROM applications a
+        JOIN results r ON r.application_id = a.id
+        WHERE a.status_aplikasi != %s
+        ORDER BY r.total_skor DESC
+    """, conn), (STATUS_DISQUALIFIED,))
+    rows = cur.fetchall()
+
+    updates = _rerank_updates(rows, quota)
+
+    cur.executemany(_q("""
+        UPDATE applications SET status_aplikasi = %s, queue_rank = %s WHERE id = %s
+    """, conn), updates)
+
+    cur.executemany(_q("""
+        UPDATE results SET status_keputusan = %s WHERE application_id = %s
+    """, conn), [(s, app_id) for s, _, app_id in updates])
+
+    conn.commit()
+
+
+def db_rerank_all(conn, quota: int = DEFAULT_QUOTA) -> None:
+    """Legacy alias — kept for backward compatibility. Calls db_rerank_post_announce."""
+    db_rerank_post_announce(conn, quota)
 
 
 def db_disqualify(
@@ -194,28 +272,30 @@ def db_disqualify(
     reason: str,
     admin_id: str,
     quota: int = DEFAULT_QUOTA,
+    announced: bool = False,
 ) -> DisqualifyResult:
     """
-    Diskualifikasi peserta di DB, naikkan rank semua di bawahnya, catat ke rank_history.
+    Disqualify applicant in DB, cascade-promote remaining, log to rank_history.
+    If announced=True, uses qualified/waiting_list/rejected tiers.
     """
     cur = conn.cursor()
 
-    # Validasi
+    # Validate
     cur.execute(_q("SELECT status_aplikasi, queue_rank FROM applications WHERE id = %s", conn), (application_id,))
     row = cur.fetchone()
     if not row:
-        raise ValueError(f"Aplikasi {application_id} tidak ditemukan.")
+        raise ValueError(f"Application {application_id} not found.")
     current_status = row[0]
     if current_status == STATUS_DISQUALIFIED:
-        raise ValueError(f"Aplikasi {application_id} sudah disqualified.")
+        raise ValueError(f"Application {application_id} is already disqualified.")
 
-    # Tandai disqualified + simpan alasan di results
+    # Mark disqualified
     cur.execute(_q("UPDATE applications SET status_aplikasi = %s, queue_rank = NULL WHERE id = %s", conn),
                 (STATUS_DISQUALIFIED, application_id))
     cur.execute(_q("UPDATE results SET status_keputusan = %s, disqualify_reason = %s WHERE application_id = %s", conn),
                 (STATUS_DISQUALIFIED, reason, application_id))
 
-    # Ambil semua pendaftar aktif, urutkan ulang
+    # Fetch remaining applicants sorted by score
     cur.execute(_q("""
         SELECT a.id, r.total_skor, a.queue_rank
         FROM applications a
@@ -234,8 +314,13 @@ def db_disqualify(
 
     for rank_zero, (app_id, _, old_rank) in enumerate(rows):
         new_rank = rank_zero + 1
-        new_status = STATUS_WAITING_LIST if new_rank <= quota else STATUS_REJECTED
-        new_rank_val = new_rank if new_rank <= quota else None
+
+        if announced:
+            new_status, new_rank_val = _assign_status(new_rank, quota)
+        else:
+            # Pre-announcement: keep everything as pending
+            new_status = STATUS_PENDING
+            new_rank_val = None
 
         if old_rank != new_rank_val:
             old_for_history = old_rank if old_rank is not None else (new_rank + 1)

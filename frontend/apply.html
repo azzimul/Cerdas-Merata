@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cerdas Merata — Apply for Scholarship</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span class="dot"></span> Cerdas Merata
+    <span style="font-size:12px; color:var(--gray-400); font-weight:400; margin-left:6px;">Scholarship Program</span>
+  </div>
+  <div class="navbar-links">
+    <span id="navUser" style="font-size:13px; color:var(--gray-600);"></span>
+    <a href="/result" id="navResult" style="display:none;">My Application</a>
+    <a href="#" id="logoutBtn" style="color:var(--red);">Log Out</a>
+    <a href="/admin">Admin</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>Scholarship Application Form</h1>
+    <p>Fill in your information honestly and completely. The AI system will assess your eligibility automatically.</p>
+  </div>
+
+  <!-- Consent -->
+  <div class="consent-box" id="consentBox">
+    <h3>Data Processing Consent</h3>
+    <ul>
+      <li>Your data will be processed by an AI system to assess scholarship eligibility.</li>
+      <li>Sensitive data (income, bills) will be automatically deleted after <strong>30 days</strong>.</li>
+      <li>Every decision includes a <strong>reasoning trace</strong> that you can view after results are announced.</li>
+      <li>Your data will not be shared with any third party.</li>
+    </ul>
+    <div class="consent-check">
+      <input type="checkbox" id="consentCheck" />
+      <label for="consentCheck">I understand and agree to the use of my data as described above.</label>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="card" id="formCard">
+    <div class="card-title">Applicant Information</div>
+    <div class="card-sub">All fields marked <span style="color:var(--red)">*</span> are required</div>
+
+    <form id="applyForm">
+      <div class="form-grid">
+
+        <div class="form-group full">
+          <label for="nama_pendaftar">Full Name <span class="req">*</span></label>
+          <input type="text" id="nama_pendaftar" name="nama_pendaftar" placeholder="As shown on your student ID" required />
+        </div>
+
+        <div class="form-group">
+          <label for="pendapatan_ortu">Parent / Guardian Monthly Income <span class="req">*</span></label>
+          <select id="pendapatan_ortu" name="pendapatan_ortu" required>
+            <option value="">-- Select income range --</option>
+            <option value="0">No income (Rp 0)</option>
+            <option value="500000">Below Rp 1,000,000</option>
+            <option value="1500000">Rp 1,000,000 – 1,999,999</option>
+            <option value="2500000">Rp 2,000,000 – 2,999,999</option>
+            <option value="3750000">Rp 3,000,000 – 4,500,000</option>
+            <option value="5000000">Above Rp 4,500,000</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="jumlah_tanggungan">Number of Dependents in School <span class="req">*</span></label>
+          <select id="jumlah_tanggungan" name="jumlah_tanggungan" required>
+            <option value="">-- Select number --</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4 or more</option>
+          </select>
+          <span class="hint">Including the applicant</span>
+        </div>
+
+        <div class="form-group">
+          <label for="tagihan_listrik">Monthly Electricity Bill <span class="req">*</span></label>
+          <select id="tagihan_listrik" name="tagihan_listrik" required>
+            <option value="">-- Select bill range --</option>
+            <option value="0">Rp 0 (no electricity)</option>
+            <option value="50000">Below Rp 100,000</option>
+            <option value="150000">Rp 100,000 – 199,999</option>
+            <option value="275000">Rp 200,000 – 350,000</option>
+            <option value="400000">Above Rp 350,000</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="wattage_listrik">Electricity Power (VA) <span class="req">*</span></label>
+          <select id="wattage_listrik" name="wattage_listrik" required>
+            <option value="">-- Select power --</option>
+            <option value="450">450 VA</option>
+            <option value="900">900 VA</option>
+            <option value="1300">1300 VA</option>
+            <option value="2200">2200 VA and above</option>
+            <option value="0">No electricity</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="ipk">GPA / Academic Score <span class="req">*</span></label>
+          <select id="ipk" name="ipk" required>
+            <option value="">-- Select GPA range --</option>
+            <option value="3.8">3.70 – 4.00 (Excellent)</option>
+            <option value="3.6">3.50 – 3.69 (Very Good)</option>
+            <option value="3.2">3.00 – 3.49 (Good)</option>
+            <option value="2.7">2.50 – 2.99 (Satisfactory)</option>
+            <option value="2.0">Below 2.50</option>
+          </select>
+          <span class="hint">Use your cumulative GPA on a 4.00 scale</span>
+        </div>
+
+        <div class="form-group">
+          <label for="status_ortu">Parent Status <span class="req">*</span></label>
+          <select id="status_ortu" name="status_ortu" required>
+            <option value="">-- Select status --</option>
+            <option value="lengkap">Both parents alive</option>
+            <option value="yatim">Father deceased</option>
+            <option value="piatu">Mother deceased</option>
+            <option value="yatim_piatu">Both parents deceased</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pekerjaan_ortu">Parent / Guardian Occupation <span class="req">*</span></label>
+          <select id="pekerjaan_ortu" name="pekerjaan_ortu" required>
+            <option value="">-- Select occupation --</option>
+            <option value="tidak_bekerja">Unemployed</option>
+            <option value="buruh_petani">Laborer / Farmer</option>
+            <option value="pedagang_kecil">Small Trader</option>
+            <option value="wiraswasta">Self-Employed</option>
+            <option value="pns_swasta_tni">Government / Private / Military Employee</option>
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label>Currently Receiving Another Scholarship? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="bantuan_lain" value="false" required /> No</label>
+            <label><input type="radio" name="bantuan_lain" value="true" /> Yes</label>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label for="kondisi_khusus">Special Condition (Optional)</label>
+          <textarea id="kondisi_khusus" name="kondisi_khusus" placeholder="Example: Father passed away 2 months ago, currently living with grandmother..."></textarea>
+          <span class="hint">If there are circumstances not covered by the form above, describe them here. This may trigger manual review by an admin.</span>
+        </div>
+
+      </div><!-- end form-grid -->
+
+      <div id="formError" class="alert alert-danger" style="display:none; margin-top:16px;">
+        <span class="alert-icon">!</span>
+        <span id="formErrorMsg"></span>
+      </div>
+
+      <div class="flex-end mt-20">
+        <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+          Submit Application
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  // Auth gate
+  (async function init() {
+    const token = localStorage.getItem("cm_token");
+    if (!token) { window.location.href = "/auth"; return; }
+    try {
+      const user = await api.me();
+      if (user.has_application) {
+        window.location.href = "/result";
+        return;
+      }
+      // Show username in nav
+      const navUser = document.getElementById("navUser");
+      if (navUser) navUser.textContent = user.full_name;
+    } catch {
+      localStorage.removeItem("cm_token");
+      window.location.href = "/auth";
+    }
+  })();
+
+  // Consent gate
+  const consentCheck = document.getElementById("consentCheck");
+  const submitBtn    = document.getElementById("submitBtn");
+  consentCheck.addEventListener("change", () => {
+    submitBtn.disabled = !consentCheck.checked;
+  });
+
+  // Logout
+  document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+    e.preventDefault();
+    try { await api.logout(); } catch {}
+    localStorage.removeItem("cm_token");
+    localStorage.removeItem("cm_user");
+    window.location.href = "/auth";
+  });
+
+  // Submit
+  const form   = document.getElementById("applyForm");
+  const errBox = document.getElementById("formError");
+  const errMsg = document.getElementById("formErrorMsg");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errBox.style.display = "none";
+
+    const fd = new FormData(form);
+
+    if (!fd.get("bantuan_lain")) {
+      errMsg.textContent = "Please indicate whether you are receiving another scholarship.";
+      errBox.style.display = "flex";
+      return;
+    }
+
+    const body = {
+      nama_pendaftar:    fd.get("nama_pendaftar").trim(),
+      pendapatan_ortu:   parseInt(fd.get("pendapatan_ortu")),
+      jumlah_tanggungan: parseInt(fd.get("jumlah_tanggungan")),
+      tagihan_listrik:   parseInt(fd.get("tagihan_listrik")),
+      wattage_listrik:   parseInt(fd.get("wattage_listrik")),
+      ipk:               parseFloat(fd.get("ipk")),
+      status_ortu:       fd.get("status_ortu"),
+      pekerjaan_ortu:    fd.get("pekerjaan_ortu"),
+      bantuan_lain:      fd.get("bantuan_lain") === "true",
+      kondisi_khusus:    fd.get("kondisi_khusus") || null,
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
+
+    try {
+      const result = await api.apply(body);
+      localStorage.setItem("cm_app_id", result.application_id);
+      window.location.href = "/result";
+    } catch (err) {
+      errMsg.textContent = err.message;
+      errBox.style.display = "flex";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Application";
+      // Re-enable only if consent is still checked
+      submitBtn.disabled = !consentCheck.checked;
+    }
+  });
+</script>
+</body>
+</html>

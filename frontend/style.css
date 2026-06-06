@@ -4,6 +4,8 @@
   --blue-dark: #1d4ed8;
   --green: #16a34a;
   --green-light: #f0fdf4;
+  --teal: #0d9488;
+  --teal-light: #f0fdfa;
   --red: #dc2626;
   --red-light: #fef2f2;
   --orange: #ea580c;
@@ -129,6 +131,7 @@ textarea { resize: vertical; min-height: 80px; }
   padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
 }
 .badge-green  { background: var(--green-light); color: var(--green); }
+.badge-teal   { background: var(--teal-light); color: var(--teal); }
 .badge-red    { background: var(--red-light); color: var(--red); }
 .badge-orange { background: var(--orange-light); color: var(--orange); }
 .badge-gray   { background: var(--gray-100); color: var(--gray-600); }
@@ -223,7 +226,7 @@ tr:hover td { background: var(--gray-50); }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
 /* ── Filters ────────────────────────────────────────────── */
-.filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+.filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .filter-row select, .filter-row input { max-width: 200px; }
 .filter-row label { font-size: 13px; font-weight: 500; }
 
@@ -252,3 +255,19 @@ tr:hover td { background: var(--gray-50); }
 /* ── Progress bar ───────────────────────────────────────── */
 .progress-bar { background: var(--gray-200); border-radius: 999px; height: 8px; overflow: hidden; margin-top: 8px; }
 .progress-fill { height: 100%; border-radius: 999px; background: var(--blue); transition: width 0.5s ease; }
+
+/* ── Auth tabs ──────────────────────────────────────────── */
+.auth-tabs { display: flex; border-bottom: 1px solid var(--gray-200); margin-bottom: 20px; }
+.auth-tab {
+  flex: 1; padding: 10px; background: none; border: none; font-size: 14px;
+  font-weight: 600; color: var(--gray-400); cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.15s;
+}
+.auth-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.auth-tab:hover:not(.active) { color: var(--gray-700); }
+
+/* ── Score hero for result page ─────────────────────────── */
+.score-hero + .score-hero { margin-top: 0; border-top: none; }
+
+/* ── Teal color for qualified ───────────────────────────── */
+.stat-num[style*="teal"] { color: var(--teal) !important; }

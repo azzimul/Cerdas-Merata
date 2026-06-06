@@ -1,5 +1,5 @@
 """
-DB connection — PostgreSQL (default) atau SQLite (USE_SQLITE=1 untuk demo offline).
+DB connection — PostgreSQL (default) or SQLite (USE_SQLITE=1 for offline demo).
 """
 
 import os
@@ -20,11 +20,31 @@ if USE_SQLITE:
         return conn
 
     def init_sqlite():
-        """Buat tabel SQLite yang ekuivalen dengan schema PostgreSQL."""
+        """Create SQLite tables equivalent to the PostgreSQL schema."""
         conn = get_conn()
         conn.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                full_name TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                expires_at TEXT NOT NULL DEFAULT (datetime('now','+1 day'))
+            );
+            CREATE TABLE IF NOT EXISTS system_config (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
             CREATE TABLE IF NOT EXISTS applications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 nama_pendaftar TEXT NOT NULL,
                 pendapatan_ortu INTEGER NOT NULL,
                 jumlah_tanggungan INTEGER NOT NULL,
@@ -73,6 +93,17 @@ if USE_SQLITE:
                 changed_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
         """)
+
+        # Seed system_config defaults if not present
+        conn.execute("INSERT OR IGNORE INTO system_config (key, value) VALUES ('results_announced', 'false')")
+        conn.execute("INSERT OR IGNORE INTO system_config (key, value) VALUES ('quota', '50')")
+
+        # Add user_id column to applications if it doesn't exist yet (upgrade path)
+        try:
+            conn.execute("ALTER TABLE applications ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
+        except Exception:
+            pass  # Column already exists
+
         conn.commit()
         conn.close()
 
@@ -95,11 +126,10 @@ else:
 
 
 def row_to_dict(row) -> dict:
-    """Konversi sqlite3.Row atau psycopg2 row menjadi dict biasa."""
+    """Convert sqlite3.Row or psycopg2 row to a plain dict."""
     if row is None:
         return None
     d = dict(row)
-    # Parse JSON string fields jika SQLite mode
     for key in ("skor_per_kategori", "reasoning_trace", "anomaly_reasons"):
         if key in d and isinstance(d[key], str):
             try:

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cerdas Merata — Scholarship Program</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span class="dot"></span> Cerdas Merata
+    <span style="font-size:12px; color:var(--gray-400); font-weight:400; margin-left:6px;">Scholarship Program</span>
+  </div>
+  <div class="navbar-links">
+    <a href="/admin">Admin</a>
+  </div>
+</nav>
+
+<div class="page-wrap" style="max-width:440px; padding-top:48px;">
+
+  <div class="page-header" style="text-align:center;">
+    <h1>Cerdas Merata Scholarship</h1>
+    <p>Sign in to your account or create a new one to apply.</p>
+  </div>
+
+  <!-- Tab Toggle -->
+  <div class="auth-tabs">
+    <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
+    <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
+  </div>
+
+  <!-- Login Form -->
+  <div class="card" id="loginCard">
+    <div class="card-title">Welcome Back</div>
+    <div class="card-sub">Enter your credentials to continue</div>
+    <form id="loginForm">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="loginUser">Username or Email <span class="req">*</span></label>
+        <input type="text" id="loginUser" placeholder="your_username" autocomplete="username" required />
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="loginPass">Password <span class="req">*</span></label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+      <div id="loginError" class="alert alert-danger" style="display:none; margin-bottom:12px;">
+        <span class="alert-icon">!</span>
+        <span id="loginErrorMsg"></span>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" id="loginBtn">Login</button>
+    </form>
+    <p style="text-align:center; margin-top:16px; font-size:13px; color:var(--gray-400);">
+      Don't have an account? <a href="#" onclick="switchTab('register'); return false;">Register here</a>
+    </p>
+  </div>
+
+  <!-- Register Form -->
+  <div class="card" id="registerCard" style="display:none;">
+    <div class="card-title">Create Account</div>
+    <div class="card-sub">Register to apply for the scholarship</div>
+    <form id="registerForm">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="regName">Full Name <span class="req">*</span></label>
+        <input type="text" id="regName" placeholder="Your full name" autocomplete="name" required />
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="regEmail">Email Address <span class="req">*</span></label>
+        <input type="email" id="regEmail" placeholder="you@email.com" autocomplete="email" required />
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="regUser">Username <span class="req">*</span></label>
+        <input type="text" id="regUser" placeholder="choose_a_username" autocomplete="username" required />
+        <span class="hint">Minimum 3 characters. Lowercase letters and numbers only.</span>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="regPass">Password <span class="req">*</span></label>
+        <input type="password" id="regPass" placeholder="Minimum 6 characters" autocomplete="new-password" required />
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="regPass2">Confirm Password <span class="req">*</span></label>
+        <input type="password" id="regPass2" placeholder="Repeat your password" autocomplete="new-password" required />
+      </div>
+      <div id="registerError" class="alert alert-danger" style="display:none; margin-bottom:12px;">
+        <span class="alert-icon">!</span>
+        <span id="registerErrorMsg"></span>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" id="registerBtn">Create Account</button>
+    </form>
+    <p style="text-align:center; margin-top:16px; font-size:13px; color:var(--gray-400);">
+      Already have an account? <a href="#" onclick="switchTab('login'); return false;">Login here</a>
+    </p>
+  </div>
+
+</div>
+
+<script src="api.js"></script>
+<script>
+  // Redirect if already logged in
+  (async function checkAuth() {
+    const token = localStorage.getItem("cm_token");
+    if (!token) return;
+    try {
+      const user = await api.me();
+      if (user.has_application) {
+        window.location.href = "/result";
+      } else {
+        window.location.href = "/apply";
+      }
+    } catch {
+      localStorage.removeItem("cm_token");
+    }
+  })();
+
+  function switchTab(tab) {
+    const isLogin = tab === "login";
+    document.getElementById("loginCard").style.display    = isLogin ? "block" : "none";
+    document.getElementById("registerCard").style.display = isLogin ? "none" : "block";
+    document.getElementById("tabLogin").classList.toggle("active", isLogin);
+    document.getElementById("tabRegister").classList.toggle("active", !isLogin);
+  }
+
+  // Login
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById("loginError");
+    errBox.style.display = "none";
+    const btn = document.getElementById("loginBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+    try {
+      const data = await api.login({
+        username: document.getElementById("loginUser").value.trim(),
+        password: document.getElementById("loginPass").value,
+      });
+      localStorage.setItem("cm_token", data.token);
+      localStorage.setItem("cm_user", JSON.stringify({ username: data.username, full_name: data.full_name }));
+      // Check if user already has application
+      const me = await api.me();
+      window.location.href = me.has_application ? "/result" : "/apply";
+    } catch (err) {
+      document.getElementById("loginErrorMsg").textContent = err.message;
+      errBox.style.display = "flex";
+      btn.disabled = false;
+      btn.textContent = "Login";
+    }
+  });
+
+  // Register
+  document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById("registerError");
+    errBox.style.display = "none";
+
+    const pass  = document.getElementById("regPass").value;
+    const pass2 = document.getElementById("regPass2").value;
+    if (pass !== pass2) {
+      document.getElementById("registerErrorMsg").textContent = "Passwords do not match.";
+      errBox.style.display = "flex";
+      return;
+    }
+
+    const btn = document.getElementById("registerBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+    try {
+      const data = await api.register({
+        full_name: document.getElementById("regName").value.trim(),
+        email:     document.getElementById("regEmail").value.trim(),
+        username:  document.getElementById("regUser").value.trim().toLowerCase(),
+        password:  pass,
+      });
+      localStorage.setItem("cm_token", data.token);
+      localStorage.setItem("cm_user", JSON.stringify({ username: data.username, full_name: data.full_name }));
+      window.location.href = "/apply";
+    } catch (err) {
+      document.getElementById("registerErrorMsg").textContent = err.message;
+      errBox.style.display = "flex";
+      btn.disabled = false;
+      btn.textContent = "Create Account";
+    }
+  });
+</script>
+</body>
+</html>
