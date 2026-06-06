@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cerdas Merata — Hasil Penilaian</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span class="dot"></span> Cerdas Merata
+  </div>
+  <div class="navbar-links">
+    <a href="index.html">Daftar</a>
+    <a href="admin.html">Admin</a>
+  </div>
+</nav>
+
+<div class="page-wrap" id="loadingState">
+  <div style="text-align:center; padding: 60px 0; color: var(--gray-400);">Memuat hasil...</div>
+</div>
+
+<div class="page-wrap" id="mainContent" style="display:none">
+
+  <div class="page-header">
+    <h1 id="namaHeader">Hasil Penilaian</h1>
+    <p id="appIdHeader" class="text-muted"></p>
+  </div>
+
+  <!-- Anomaly Banner (hidden by default) -->
+  <div class="anomaly-banner" id="anomalyBanner" style="display:none">
+    <div class="icon">⚠</div>
+    <div>
+      <h4>Anomali Terdeteksi — Memerlukan Review Manual</h4>
+      <p id="anomalyText"></p>
+    </div>
+  </div>
+
+  <!-- Score Hero -->
+  <div class="score-hero">
+    <div>
+      <span class="score-num" id="scoreNum">0</span>
+      <span class="score-max"> / 45</span>
+    </div>
+    <div class="score-label">Total Skor Kelayakan</div>
+    <div class="progress-bar" style="max-width:300px; margin: 12px auto 0;">
+      <div class="progress-fill" id="scoreBar" style="width:0%"></div>
+    </div>
+    <div class="score-rank mt-12" id="rankDisplay"></div>
+  </div>
+
+  <!-- Skor per Kategori -->
+  <div class="card">
+    <div class="card-title">Ringkasan Skor per Kategori</div>
+    <div class="card-sub">Breakdown poin dari setiap kategori penilaian</div>
+
+    <div id="categoryGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:12px;"></div>
+  </div>
+
+  <!-- Reasoning Trace -->
+  <div class="card">
+    <div class="card-title">Reasoning Trace</div>
+    <div class="card-sub">Aturan-aturan yang aktif saat menilai data Anda</div>
+
+    <div id="traceContainer"></div>
+  </div>
+
+  <!-- Appeal -->
+  <div class="card" id="appealSection">
+    <div class="card-title">Tidak Setuju dengan Hasil?</div>
+    <div class="card-sub">Anda dapat mengajukan banding jika merasa ada data yang tidak dipertimbangkan dengan tepat.</div>
+    <button class="btn btn-ghost" id="openAppealBtn">Ajukan Banding</button>
+  </div>
+
+  <div style="text-align:center; margin-top:20px;">
+    <a href="index.html" class="btn btn-ghost">Daftar Ulang</a>
+  </div>
+
+</div>
+
+<!-- Appeal Modal -->
+<div class="modal-backdrop" id="appealModal">
+  <div class="modal">
+    <h3>Ajukan Banding</h3>
+    <p style="font-size:13px; color:var(--gray-600); margin-bottom:12px;">
+      Jelaskan mengapa Anda merasa hasil penilaian ini tidak adil atau ada data yang salah.
+    </p>
+    <textarea id="appealText" placeholder="Contoh: Data pendapatan saya sudah berubah karena ayah kehilangan pekerjaan bulan lalu..." rows="5" style="width:100%;"></textarea>
+    <div id="appealError" class="alert alert-danger" style="display:none; margin-bottom:12px;">
+      <span class="alert-icon">!</span>
+      <span id="appealErrorMsg"></span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeAppealBtn">Batal</button>
+      <button class="btn btn-primary" id="submitAppealBtn">Kirim Banding</button>
+    </div>
+  </div>
+</div>
+
+<!-- Appeal Success Modal -->
+<div class="modal-backdrop" id="appealSuccessModal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:48px; margin-bottom:12px;">✓</div>
+    <h3>Banding Terkirim</h3>
+    <p style="font-size:14px; color:var(--gray-600); margin-top:8px;">Admin akan meninjau banding Anda dan menghubungi Anda. Harap simpan ID aplikasi Anda.</p>
+    <button class="btn btn-primary mt-20" id="closeSuccessBtn">Tutup</button>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+  const CATEGORIES = ["kemiskinan", "tanggungan", "infrastruktur", "sosial", "prestasi"];
+
+  let resultData = null;
+  let applicationId = null;
+
+  function renderCategoryGrid(skor_per_kategori) {
+    const grid = document.getElementById("categoryGrid");
+    const labels = {
+      kemiskinan: "A — Kemiskinan",
+      tanggungan: "B — Tanggungan",
+      infrastruktur: "C — Infrastruktur",
+      sosial: "D — Sosial",
+      prestasi: "E — Prestasi",
+    };
+    grid.innerHTML = CATEGORIES.map(cat => {
+      const pts = skor_per_kategori[cat] ?? 0;
+      const sign = pts > 0 ? "+" : "";
+      return `
+        <div class="stat-card" style="border-top: 3px solid currentColor;" class="${catClass(cat)}">
+          <div class="stat-num" style="font-size:22px;">${sign}${pts}</div>
+          <div class="stat-label">${labels[cat]}</div>
+        </div>`;
+    }).join("");
+  }
+
+  function renderTrace(trace) {
+    const container = document.getElementById("traceContainer");
+    const byCategory = {};
+    CATEGORIES.forEach(c => byCategory[c] = []);
+    trace.forEach(r => byCategory[r.category]?.push(r));
+
+    container.innerHTML = CATEGORIES.map(cat => {
+      const rules = byCategory[cat];
+      const pts = rules.reduce((s, r) => s + r.points, 0);
+      const sign = pts >= 0 ? "+" : "";
+      const header = `<div class="trace-cat-header ${catClass(cat)}">${catLabel(cat)}<span>${sign}${pts} poin</span></div>`;
+      const body = rules.length
+        ? rules.map(r => `
+            <div class="trace-rule">
+              <div>
+                <div class="trace-rule-id">[${r.rule_id}] ${r.label}</div>
+                <div class="trace-rule-desc">${r.description}</div>
+              </div>
+              <span class="trace-pts ${r.points >= 0 ? 'pos' : 'neg'}">${r.points >= 0 ? '+' : ''}${r.points}</span>
+            </div>`).join("")
+        : `<div class="trace-empty">Tidak ada aturan yang aktif untuk kategori ini.</div>`;
+      return `<div class="trace-category"><div class="trace-rules">${header}${body}</div></div>`;
+    }).join("");
+  }
+
+  function render(data) {
+    applicationId = data.application_id;
+
+    document.getElementById("namaHeader").textContent = `Hasil — ${data.nama_pendaftar}`;
+    document.getElementById("appIdHeader").textContent = `ID Aplikasi: #${data.application_id} · Diproses: ${new Date(data.processed_at).toLocaleString("id-ID")}`;
+
+    // Score
+    const score = data.total_skor;
+    document.getElementById("scoreNum").textContent = score;
+    document.getElementById("scoreBar").style.width = Math.max(0, (score / 45) * 100) + "%";
+
+    // Rank / status
+    const rankEl = document.getElementById("rankDisplay");
+    if (data.status_keputusan === "waiting_list") {
+      rankEl.innerHTML = `<span class="badge badge-green" style="font-size:15px; padding:6px 16px;">Posisi Antrian: Rank ${data.queue_rank} dari 50 slot</span>`;
+    } else if (data.status_keputusan === "rejected") {
+      rankEl.innerHTML = `<span class="badge badge-red" style="font-size:15px; padding:6px 16px;">Tidak Masuk Kuota (50 slot penuh)</span>`;
+    }
+
+    // Anomaly
+    if (data.is_anomaly) {
+      document.getElementById("anomalyBanner").style.display = "flex";
+      document.getElementById("anomalyText").textContent = "Data Anda mengandung ketidakkonsistenan dan telah dikirim ke admin untuk ditinjau secara manual sebelum keputusan final.";
+    }
+
+    renderCategoryGrid(data.skor_per_kategori);
+    renderTrace(data.reasoning_trace);
+
+    document.getElementById("loadingState").style.display = "none";
+    document.getElementById("mainContent").style.display = "block";
+  }
+
+  async function init() {
+    // Coba dari sessionStorage dulu (baru submit), fallback ke URL param
+    const stored = sessionStorage.getItem("cm_result");
+    if (stored) {
+      sessionStorage.removeItem("cm_result");
+      render(JSON.parse(stored));
+      return;
+    }
+    const urlId = new URLSearchParams(location.search).get("id");
+    if (urlId) {
+      try {
+        const data = await api.getResult(urlId);
+        render(data);
+      } catch (e) {
+        document.getElementById("loadingState").innerHTML = `<div class="alert alert-danger"><span class="alert-icon">!</span> Gagal memuat data: ${e.message}</div>`;
+      }
+    } else {
+      document.getElementById("loadingState").innerHTML = `<div class="alert alert-warning"><span class="alert-icon">!</span> Tidak ada data hasil. <a href="index.html">Kembali ke form</a></div>`;
+    }
+  }
+
+  // Appeal
+  document.getElementById("openAppealBtn").addEventListener("click", () => {
+    document.getElementById("appealModal").classList.add("open");
+  });
+  document.getElementById("closeAppealBtn").addEventListener("click", () => {
+    document.getElementById("appealModal").classList.remove("open");
+  });
+  document.getElementById("closeSuccessBtn").addEventListener("click", () => {
+    document.getElementById("appealSuccessModal").classList.remove("open");
+  });
+
+  document.getElementById("submitAppealBtn").addEventListener("click", async () => {
+    const text = document.getElementById("appealText").value.trim();
+    const errEl = document.getElementById("appealError");
+    errEl.style.display = "none";
+
+    if (!text) {
+      document.getElementById("appealErrorMsg").textContent = "Harap tulis alasan banding Anda.";
+      errEl.style.display = "flex";
+      return;
+    }
+
+    const btn = document.getElementById("submitAppealBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      await api.appeal({ application_id: applicationId, alasan_banding: text });
+      document.getElementById("appealModal").classList.remove("open");
+      document.getElementById("appealSuccessModal").classList.add("open");
+    } catch (err) {
+      document.getElementById("appealErrorMsg").textContent = err.message;
+      errEl.style.display = "flex";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Kirim Banding";
+    }
+  });
+
+  init();
+</script>
+</body>
+</html>

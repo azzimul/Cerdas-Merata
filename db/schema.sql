@@ -1,0 +1,70 @@
+-- Cerdas Merata v1.3 — PostgreSQL Schema
+-- Jalankan: psql -U postgres -d cerdas_merata -f db/schema.sql
+
+CREATE TABLE IF NOT EXISTS applications (
+    id                  SERIAL          PRIMARY KEY,
+    nama_pendaftar      VARCHAR(100)    NOT NULL,
+    pendapatan_ortu     INTEGER         NOT NULL,
+    jumlah_tanggungan   SMALLINT        NOT NULL,
+    tagihan_listrik     INTEGER         NOT NULL,
+    wattage_listrik     SMALLINT        NOT NULL,
+    ipk                 NUMERIC(5,2)    NOT NULL,
+    status_ortu         VARCHAR(20)     NOT NULL
+                            CHECK (status_ortu IN ('lengkap','yatim','piatu','yatim_piatu')),
+    pekerjaan_ortu      VARCHAR(30)     NOT NULL
+                            CHECK (pekerjaan_ortu IN ('tidak_bekerja','buruh_petani','pedagang_kecil','wiraswasta','pns_swasta_tni')),
+    bantuan_lain        BOOLEAN         NOT NULL DEFAULT FALSE,
+    kondisi_khusus      TEXT,
+    status_aplikasi     VARCHAR(20)     NOT NULL DEFAULT 'pending'
+                            CHECK (status_aplikasi IN ('pending','waiting_list','rejected','disqualified','appealed')),
+    queue_rank          SMALLINT,
+    created_at          TIMESTAMP       NOT NULL DEFAULT NOW(),
+    expire_at           TIMESTAMP       NOT NULL DEFAULT (NOW() + INTERVAL '30 days')
+);
+
+CREATE TABLE IF NOT EXISTS results (
+    id                  SERIAL          PRIMARY KEY,
+    application_id      INTEGER         NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    total_skor          SMALLINT        NOT NULL,
+    skor_per_kategori   JSONB           NOT NULL,
+    reasoning_trace     JSONB           NOT NULL,
+    status_keputusan    VARCHAR(20)     NOT NULL
+                            CHECK (status_keputusan IN ('waiting_list','rejected','disqualified','pending')),
+    is_anomaly          BOOLEAN         NOT NULL DEFAULT FALSE,
+    anomaly_reasons     JSONB,
+    admin_override      BOOLEAN         NOT NULL DEFAULT FALSE,
+    override_reason     TEXT,
+    disqualify_reason   TEXT,
+    processed_at        TIMESTAMP       NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS appeals (
+    id                  SERIAL          PRIMARY KEY,
+    application_id      INTEGER         NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    alasan_banding      TEXT            NOT NULL,
+    status_banding      VARCHAR(20)     NOT NULL DEFAULT 'open'
+                            CHECK (status_banding IN ('open','under_review','resolved')),
+    catatan_admin       TEXT,
+    created_at          TIMESTAMP       NOT NULL DEFAULT NOW(),
+    resolved_at         TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS rank_history (
+    id                  SERIAL          PRIMARY KEY,
+    application_id      INTEGER         NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    rank_lama           SMALLINT        NOT NULL,
+    rank_baru           SMALLINT        NOT NULL,
+    triggered_by        INTEGER         NOT NULL REFERENCES applications(id),
+    admin_id            VARCHAR(50)     NOT NULL,
+    changed_at          TIMESTAMP       NOT NULL DEFAULT NOW()
+);
+
+-- Index untuk query umum
+CREATE INDEX IF NOT EXISTS idx_applications_status  ON applications(status_aplikasi);
+CREATE INDEX IF NOT EXISTS idx_applications_rank    ON applications(queue_rank);
+CREATE INDEX IF NOT EXISTS idx_results_app_id       ON results(application_id);
+CREATE INDEX IF NOT EXISTS idx_appeals_app_id       ON appeals(application_id);
+CREATE INDEX IF NOT EXISTS idx_rank_history_app_id  ON rank_history(application_id);
+
+-- Auto-delete: hapus data yang sudah expire (jalankan via pg_cron atau scheduled job)
+-- DELETE FROM applications WHERE expire_at < NOW();

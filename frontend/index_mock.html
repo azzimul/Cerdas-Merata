@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cerdas Merata — Pendaftaran Subsidi</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span class="dot"></span> Cerdas Merata
+  </div>
+  <div class="navbar-links">
+    <a href="index.html" class="active">Daftar</a>
+    <a href="admin.html">Admin</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>Pendaftaran Subsidi Bimbel</h1>
+    <p>Isi data dengan jujur dan lengkap. Sistem AI akan menilai kelayakan secara otomatis.</p>
+  </div>
+
+  <!-- Consent -->
+  <div class="consent-box" id="consentBox">
+    <h3>Persetujuan Penggunaan Data (Consent Form)</h3>
+    <ul>
+      <li>Data yang Anda berikan akan diproses oleh sistem AI untuk menilai kelayakan subsidi.</li>
+      <li>Data sensitif (pendapatan, tagihan) akan dihapus otomatis setelah <strong>30 hari</strong>.</li>
+      <li>Setiap keputusan disertai <strong>reasoning trace</strong> yang dapat Anda lihat dan ajukan banding.</li>
+      <li>Data tidak akan dibagikan ke pihak ketiga manapun.</li>
+    </ul>
+    <div class="consent-check">
+      <input type="checkbox" id="consentCheck" />
+      <label for="consentCheck">Saya memahami dan menyetujui penggunaan data saya sebagaimana dijelaskan di atas.</label>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="card" id="formCard">
+    <div class="card-title">Data Pendaftar</div>
+    <div class="card-sub">Semua field bertanda <span style="color:var(--red)">*</span> wajib diisi</div>
+
+    <form id="applyForm">
+      <div class="form-grid">
+
+        <div class="form-group full">
+          <label for="nama_pendaftar">Nama Lengkap Siswa <span class="req">*</span></label>
+          <input type="text" id="nama_pendaftar" name="nama_pendaftar" placeholder="Nama sesuai kartu pelajar" required />
+        </div>
+
+        <div class="form-group">
+          <label for="pendapatan_ortu">Pendapatan Orang Tua / Bulan <span class="req">*</span></label>
+          <input type="number" id="pendapatan_ortu" name="pendapatan_ortu" placeholder="0" min="0" required />
+          <span class="hint">Isi 0 jika orang tua tidak berpenghasilan</span>
+        </div>
+
+        <div class="form-group">
+          <label for="jumlah_tanggungan">Jumlah Anak yang Masih Sekolah <span class="req">*</span></label>
+          <input type="number" id="jumlah_tanggungan" name="jumlah_tanggungan" placeholder="1" min="1" max="20" required />
+          <span class="hint">Termasuk pendaftar sendiri</span>
+        </div>
+
+        <div class="form-group">
+          <label for="tagihan_listrik">Tagihan Listrik Rata-rata / Bulan (Rp) <span class="req">*</span></label>
+          <input type="number" id="tagihan_listrik" name="tagihan_listrik" placeholder="0" min="0" required />
+          <span class="hint">Isi 0 jika tidak memiliki listrik</span>
+        </div>
+
+        <div class="form-group">
+          <label for="wattage_listrik">Daya Listrik Terpasang <span class="req">*</span></label>
+          <select id="wattage_listrik" name="wattage_listrik" required>
+            <option value="">-- Pilih daya --</option>
+            <option value="450">450 VA</option>
+            <option value="900">900 VA</option>
+            <option value="1300">1300 VA</option>
+            <option value="2200">2200 VA ke atas</option>
+            <option value="0">Tidak memiliki listrik</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="ipk">IPK atau Nilai Rata-rata Rapor <span class="req">*</span></label>
+          <input type="number" id="ipk" name="ipk" placeholder="3.50" step="0.01" min="0" max="100" required />
+          <span class="hint">Skala 4.00 (IPK) atau 0–100 (rapor)</span>
+        </div>
+
+        <div class="form-group">
+          <label for="status_ortu">Status Orang Tua <span class="req">*</span></label>
+          <select id="status_ortu" name="status_ortu" required>
+            <option value="">-- Pilih status --</option>
+            <option value="lengkap">Lengkap (ayah & ibu ada)</option>
+            <option value="yatim">Yatim (ayah meninggal)</option>
+            <option value="piatu">Piatu (ibu meninggal)</option>
+            <option value="yatim_piatu">Yatim-Piatu (keduanya meninggal)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pekerjaan_ortu">Pekerjaan Orang Tua <span class="req">*</span></label>
+          <select id="pekerjaan_ortu" name="pekerjaan_ortu" required>
+            <option value="">-- Pilih pekerjaan --</option>
+            <option value="tidak_bekerja">Tidak Bekerja / Pengangguran</option>
+            <option value="buruh_petani">Buruh / Petani</option>
+            <option value="pedagang_kecil">Pedagang Kecil</option>
+            <option value="wiraswasta">Wiraswasta</option>
+            <option value="pns_swasta_tni">PNS / Swasta / TNI</option>
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label>Sedang Menerima Beasiswa Lain? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="bantuan_lain" value="false" required /> Tidak</label>
+            <label><input type="radio" name="bantuan_lain" value="true" /> Ya (akan mengurangi poin prioritas)</label>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label for="kondisi_khusus">Kondisi Khusus (Opsional)</label>
+          <textarea id="kondisi_khusus" name="kondisi_khusus" placeholder="Contoh: ayah baru meninggal 2 bulan lalu, saat ini tinggal bersama nenek..."></textarea>
+          <span class="hint">Jika ada kondisi yang tidak tercakup form di atas, jelaskan di sini. Data ini dapat memicu review manual oleh admin.</span>
+        </div>
+
+      </div><!-- end form-grid -->
+
+      <div id="formError" class="alert alert-danger" style="display:none; margin-top:16px;">
+        <span class="alert-icon">!</span>
+        <span id="formErrorMsg"></span>
+      </div>
+
+      <div class="flex-end mt-20">
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+          Kirim Pendaftaran
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+  const consentCheck = document.getElementById("consentCheck");
+  const submitBtn    = document.getElementById("submitBtn");
+  const form         = document.getElementById("applyForm");
+  const errBox       = document.getElementById("formError");
+  const errMsg       = document.getElementById("formErrorMsg");
+
+  consentCheck.addEventListener("change", () => {
+    submitBtn.disabled = !consentCheck.checked;
+  });
+  submitBtn.disabled = true;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errBox.style.display = "none";
+
+    const fd = new FormData(form);
+    const body = {
+      nama_pendaftar:    fd.get("nama_pendaftar").trim(),
+      pendapatan_ortu:   parseInt(fd.get("pendapatan_ortu")),
+      jumlah_tanggungan: parseInt(fd.get("jumlah_tanggungan")),
+      tagihan_listrik:   parseInt(fd.get("tagihan_listrik")),
+      wattage_listrik:   parseInt(fd.get("wattage_listrik")),
+      ipk:               parseFloat(fd.get("ipk")),
+      status_ortu:       fd.get("status_ortu"),
+      pekerjaan_ortu:    fd.get("pekerjaan_ortu"),
+      bantuan_lain:      fd.get("bantuan_lain") === "true",
+      kondisi_khusus:    fd.get("kondisi_khusus") || null,
+    };
+
+    if (!fd.get("bantuan_lain")) {
+      errMsg.textContent = "Harap pilih apakah Anda sedang menerima beasiswa lain.";
+      errBox.style.display = "flex";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span> Memproses...';
+
+    try {
+      const result = await api.apply(body);
+      sessionStorage.setItem("cm_result", JSON.stringify(result));
+      window.location.href = "result.html";
+    } catch (err) {
+      errMsg.textContent = err.message;
+      errBox.style.display = "flex";
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = "Kirim Pendaftaran";
+    }
+  });
+</script>
+</body>
+</html>
