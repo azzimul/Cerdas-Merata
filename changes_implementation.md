@@ -115,6 +115,32 @@ This document records all changes made during the v1.3 → v2.0 redesign.
 
 ---
 
+## Version 2.1 (June 2026) — Polish & Translation
+
+| Area | Change |
+|------|--------|
+| Reasoning engine | All rule labels and descriptions translated to English in `rules.json` |
+| Admin table | Rank column always shows sequential position (1, 2, 3 …) before and after announcement |
+| Navbar | "Admin" link removed from `apply.html` and `result.html`; visible only on `auth.html` |
+| Navbar | Fixed vertical alignment of username span and links |
+
+### `reasoning/rules.json` (UPDATED)
+- All `description` fields translated (e.g. "Pendapatan = 0" → "Income = 0 (no income)")
+- All `label` fields translated (e.g. "Poin kemiskinan kritis" → "Critical poverty score")
+- All `anomaly_rules[].description` translated
+- Descriptions are stored in the DB at submission time — reset DB and re-import for fully English traces on existing data
+
+### `frontend/admin.html` (UPDATED)
+- Rank column: `a.queue_rank ?? (i + 1)` — shows sequential row position at all times
+
+### `frontend/apply.html` + `frontend/result.html` (UPDATED)
+- Removed "Admin" link from navbar on both pages
+
+### `frontend/style.css` (UPDATED)
+- `.navbar-links`: added `align-items: center` — fixes navUser vertical alignment
+
+---
+
 ## New Status Flow
 
 ```

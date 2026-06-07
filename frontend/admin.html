@@ -84,10 +84,62 @@
     .toolbar-divider { width: 1px; height: 18px; background: var(--gray-200); margin: 0 2px; }
 
     .stat-qual { color: var(--teal); }
-    .stat-wl   { color: var(--orange); }
+    .stat-wl   { color: var(--blue); }
     .stat-rej  { color: var(--red); }
     .stat-dq   { color: var(--orange); }
     .stat-pend { color: var(--gray-400); }
+
+    /* Option 2 — tooltip icon */
+    .reason-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .reason-tip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--gray-600);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: default;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .reason-tip-icon:hover { background: var(--gray-700); }
+    .reason-tip-bubble {
+      display: none;
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 6px);
+      transform: translateX(-50%);
+      background: var(--gray-900);
+      color: #ffffff;
+      font-size: 12px;
+      line-height: 1.45;
+      padding: 8px 10px;
+      border-radius: 6px;
+      width: 240px;
+      white-space: normal;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .reason-tip-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--gray-900);
+    }
+    .reason-tip-icon:hover + .reason-tip-bubble { display: block; }
+
   </style>
 </head>
 <body>
@@ -98,9 +150,8 @@
     <span class="badge badge-orange" style="margin-left:8px; font-size:11px;">Admin</span>
   </div>
   <div class="navbar-links">
-    <a href="/apply">Applicant Form</a>
-    <a href="/admin" class="active">Dashboard</a>
-    <a href="#" id="logoutBtn" style="color:var(--red);">Log Out</a>
+    <a href="/auth" target="_blank" id="navApplicantForm">Applicant Form</a>
+    <a href="#" id="logoutBtn" style="display:none; color:var(--red);">Log Out</a>
   </div>
 </nav>
 
@@ -175,11 +226,11 @@
   <!-- Stats -->
   <div class="stats-row" id="statsRow">
     <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Total</div></div>
-    <div class="stat-card"><div class="stat-num stat-qual" id="statQual">—</div><div class="stat-label">Qualified</div></div>
-    <div class="stat-card"><div class="stat-num stat-wl" id="statWL">—</div><div class="stat-label">Waiting List</div></div>
-    <div class="stat-card"><div class="stat-num stat-rej" id="statRej">—</div><div class="stat-label">Rejected</div></div>
-    <div class="stat-card"><div class="stat-num stat-dq" id="statDQ">—</div><div class="stat-label">Disqualified</div></div>
     <div class="stat-card"><div class="stat-num stat-pend" id="statPend">—</div><div class="stat-label">Pending</div></div>
+    <div class="stat-card"><div class="stat-num stat-dq" id="statDQ">—</div><div class="stat-label">Disqualified</div></div>
+    <div class="stat-card"><div class="stat-num stat-rej" id="statRej">—</div><div class="stat-label">Rejected</div></div>
+    <div class="stat-card"><div class="stat-num stat-wl" id="statWL">—</div><div class="stat-label">Waiting List</div></div>
+    <div class="stat-card"><div class="stat-num stat-qual" id="statQual">—</div><div class="stat-label">Qualified</div></div>
     <div class="stat-card"><div class="stat-num" id="statQuota">—</div><div class="stat-label">Quota</div></div>
   </div>
 
@@ -334,6 +385,7 @@
         <option value="qualified">Qualified (approve)</option>
         <option value="waiting_list">Waiting List</option>
         <option value="rejected">Rejected</option>
+        <option value="disqualified">Disqualified</option>
       </select>
     </div>
     <textarea id="ovReason" placeholder="Explain the reason for this override..." rows="4" style="width:100%;"></textarea>
@@ -343,6 +395,18 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" id="closeOvBtn">Cancel</button>
       <button class="btn btn-warning" id="confirmOvBtn">Save Override</button>
+    </div>
+  </div>
+</div>
+
+<!-- Override/Disqualify Reason Modal -->
+<div class="modal-backdrop" id="reasonModal">
+  <div class="modal">
+    <h3 id="reasonModalTitle">Override Reason — <span id="reasonName"></span></h3>
+    <p style="font-size:12px; color:var(--gray-400); margin-bottom:12px;">Application ID: <span id="reasonId"></span></p>
+    <div style="background:var(--gray-100); border-radius:7px; padding:16px; font-size:14px; color:var(--gray-700); white-space:pre-wrap; line-height:1.6;" id="reasonText"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="closeReasonBtn">Close</button>
     </div>
   </div>
 </div>
@@ -372,11 +436,15 @@
   function showLoginGate() {
     document.getElementById("loginGate").style.display = "block";
     document.getElementById("dashboard").style.display = "none";
+    document.getElementById("navApplicantForm").style.display = "inline";
+    document.getElementById("logoutBtn").style.display = "none";
   }
 
   function showDashboard() {
     document.getElementById("loginGate").style.display = "none";
     document.getElementById("dashboard").style.display = "block";
+    document.getElementById("navApplicantForm").style.display = "none";
+    document.getElementById("logoutBtn").style.display = "inline";
     loadData();
   }
 
@@ -461,13 +529,23 @@
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--gray-400);">No data found.</td></tr>`;
       return;
     }
-    tbody.innerHTML = data.map(a => `
+    tbody.innerHTML = data.map((a, i) => {
+      const reasonText  = a.override_reason || a.disqualify_reason || "";
+      const hasReason   = !!(a.admin_override || a.status_aplikasi === "disqualified") && reasonText;
+      const reasonLabel = a.admin_override ? "Override" : "Disqualified";
+
+      // Option 2 — ⓘ tooltip next to status badge
+      const statusCell = hasReason
+        ? `<span class="reason-tip">${statusBadge(a.status_aplikasi)}<span class="reason-tip-icon">i</span><span class="reason-tip-bubble"><strong>${reasonLabel}:</strong> ${escStr(reasonText)}</span></span>`
+        : statusBadge(a.status_aplikasi);
+
+      return `
       <tr>
-        <td style="font-weight:700; color:var(--blue);">${a.queue_rank ?? "—"}</td>
+        <td style="font-weight:700; color:var(--blue);">${a.queue_rank ?? (i + 1)}</td>
         <td class="text-muted">#${a.id}</td>
         <td><strong>${a.nama_pendaftar}</strong></td>
         <td><strong>${a.total_skor ?? "—"}</strong></td>
-        <td>${statusBadge(a.status_aplikasi)}</td>
+        <td>${statusCell}</td>
         <td>${a.kondisi_khusus
               ? `<button class="btn btn-ghost btn-sm" onclick="openCondition(${a.id}, '${escStr(a.nama_pendaftar)}', '${escStr(a.kondisi_khusus)}')">View</button>`
               : '<span class="text-muted">—</span>'}</td>
@@ -475,13 +553,11 @@
         <td>
           <div style="display:flex; gap:4px;">
             <button class="btn btn-ghost btn-sm" onclick="openTrace(${a.id})">Trace</button>
-            ${a.status_aplikasi !== "disqualified"
-              ? `<button class="btn btn-danger btn-sm" onclick="openDq(${a.id}, '${escStr(a.nama_pendaftar)}')">Disqualify</button>`
-              : ""}
             <button class="btn btn-warning btn-sm" onclick="openOv(${a.id}, '${escStr(a.nama_pendaftar)}')">Override</button>
           </div>
         </td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
   }
 
   function escStr(s) { return (s || "").replace(/'/g, "\\'"); }
@@ -619,6 +695,18 @@
       btn.disabled = false; btn.textContent = "Save Override";
     }
   });
+
+  // ── Reason Modal ─────────────────────────────────────────
+  function openReason(id, name, reason, isOverride) {
+    document.getElementById("reasonModalTitle").innerHTML =
+      (isOverride ? "Override Reason" : "Disqualify Reason") + " — <span id='reasonName'></span>";
+    document.getElementById("reasonName").textContent = name;
+    document.getElementById("reasonId").textContent   = "#" + id;
+    document.getElementById("reasonText").textContent = reason || "(no reason recorded)";
+    document.getElementById("reasonModal").classList.add("open");
+  }
+  document.getElementById("closeReasonBtn").addEventListener("click", () =>
+    document.getElementById("reasonModal").classList.remove("open"));
 
   // ── Trace Modal ──────────────────────────────────────────
   async function openTrace(id) {

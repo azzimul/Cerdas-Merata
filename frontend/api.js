@@ -26,6 +26,9 @@ const api = {
   logout:       ()                   => apiFetch("/auth/logout",   { method: "POST" }),
   me:           ()                   => apiFetch("/auth/me"),
 
+  // Public
+  status:       ()                   => apiFetch("/status"),
+
   // Applicant
   apply:        (body)               => apiFetch("/apply",         { method: "POST", body: JSON.stringify(body) }),
   getResult:    (id)                 => apiFetch(`/result/${id}`),

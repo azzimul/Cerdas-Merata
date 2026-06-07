@@ -289,6 +289,16 @@ def auth_me():
 
 # ── Application Routes ────────────────────────────────────────────────────────
 
+@app.get("/api/status")
+def public_status():
+    conn = get_conn()
+    try:
+        announced = _get_config(conn, "results_announced", "false") == "true"
+        return jsonify({"announced": announced})
+    finally:
+        conn.close()
+
+
 @app.post("/api/apply")
 def apply():
     conn = get_conn()
@@ -477,7 +487,8 @@ def admin_list():
         cur = conn.cursor()
         sql = """
             SELECT a.id, a.nama_pendaftar, a.status_aplikasi, a.queue_rank, a.created_at,
-                   r.total_skor, r.is_anomaly, r.admin_override, a.kondisi_khusus
+                   r.total_skor, r.is_anomaly, r.admin_override, a.kondisi_khusus,
+                   r.override_reason, r.disqualify_reason
             FROM applications a
             LEFT JOIN results r ON r.application_id = a.id
             WHERE 1=1
@@ -497,7 +508,8 @@ def admin_list():
         rows = cur.fetchall()
 
         cols = ["id","nama_pendaftar","status_aplikasi","queue_rank","created_at",
-                "total_skor","is_anomaly","admin_override","kondisi_khusus"]
+                "total_skor","is_anomaly","admin_override","kondisi_khusus",
+                "override_reason","disqualify_reason"]
         result = []
         for row in rows:
             d = dict(zip(cols, row))
@@ -576,8 +588,8 @@ def admin_override(app_id):
 
     if not reason:
         return jsonify({"error": "Override reason is required."}), 400
-    if status not in ("qualified", "waiting_list", "rejected"):
-        return jsonify({"error": "Status must be 'qualified', 'waiting_list', or 'rejected'."}), 400
+    if status not in ("qualified", "waiting_list", "rejected", "disqualified"):
+        return jsonify({"error": "Status must be qualified, waiting_list, rejected, or disqualified."}), 400
 
     conn = get_conn()
     try:
@@ -710,20 +722,26 @@ def admin_import():
             try:
                 cur = conn.cursor()
                 _execute(cur, "SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
-                if cur.fetchone():
-                    skipped += 1
-                    continue
+                existing = cur.fetchone()
 
-                _execute(cur, """
-                    INSERT INTO users (username, email, full_name, password_hash)
-                    VALUES (%s, %s, %s, %s)
-                """, (username, email, full_name, pw_hash))
-
-                if USE_SQLITE:
-                    cur.execute("SELECT last_insert_rowid()")
+                if existing:
+                    user_id = existing[0]
+                    # Skip only if they already have an application (reset clears apps, so this allows re-import)
+                    _execute(cur, "SELECT id FROM applications WHERE user_id = %s", (user_id,))
+                    if cur.fetchone():
+                        skipped += 1
+                        continue
                 else:
-                    cur.execute("SELECT lastval()")
-                user_id = cur.fetchone()[0]
+                    _execute(cur, """
+                        INSERT INTO users (username, email, full_name, password_hash)
+                        VALUES (%s, %s, %s, %s)
+                    """, (username, email, full_name, pw_hash))
+
+                    if USE_SQLITE:
+                        cur.execute("SELECT last_insert_rowid()")
+                    else:
+                        cur.execute("SELECT lastval()")
+                    user_id = cur.fetchone()[0]
 
                 result_r = reasoning_run(facts)
                 kondisi  = (row.get("kondisi_khusus") or "").strip() or None

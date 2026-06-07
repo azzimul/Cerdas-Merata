@@ -17,7 +17,6 @@
     <span id="navUser" style="font-size:13px; color:var(--gray-600);"></span>
     <a href="/result" id="navResult" style="display:none;">My Application</a>
     <a href="#" id="logoutBtn" style="color:var(--red);">Log Out</a>
-    <a href="/admin">Admin</a>
   </div>
 </nav>
 
@@ -25,6 +24,15 @@
   <div class="page-header">
     <h1>Scholarship Application Form</h1>
     <p>Fill in your information honestly and completely. The AI system will assess your eligibility automatically.</p>
+  </div>
+
+  <!-- Closed notice -->
+  <div id="closedNotice" class="card" style="display:none; text-align:center; padding:40px 24px;">
+    <div style="font-size:32px; margin-bottom:16px;">🔒</div>
+    <h2 style="margin-bottom:8px;">Application Period Closed</h2>
+    <p style="color:var(--gray-600); max-width:400px; margin:0 auto;">
+      The application window for this cycle has ended. New applications are no longer being accepted.
+    </p>
   </div>
 
   <!-- Consent -->
@@ -177,12 +185,17 @@
     const token = localStorage.getItem("cm_token");
     if (!token) { window.location.href = "/auth"; return; }
     try {
-      const user = await api.me();
+      const [user, status] = await Promise.all([api.me(), api.status()]);
       if (user.has_application) {
         window.location.href = "/result";
         return;
       }
-      // Show username in nav
+      if (status.announced) {
+        document.getElementById("closedNotice").style.display = "block";
+        document.getElementById("consentBox").style.display   = "none";
+        document.getElementById("formCard").style.display     = "none";
+        return;
+      }
       const navUser = document.getElementById("navUser");
       if (navUser) navUser.textContent = user.full_name;
     } catch {

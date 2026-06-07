@@ -1,214 +1,214 @@
 {
   "version": "1.3",
-  "description": "12 aturan IF-THEN Forward Chaining — 5 kategori — Cerdas Merata",
+  "description": "12 IF-THEN Forward Chaining rules — 5 categories — Cerdas Merata",
   "max_score_teoritis": 45,
   "categories": ["kemiskinan", "tanggungan", "infrastruktur", "sosial", "prestasi"],
   "rules": [
     {
       "id": "A1",
       "category": "kemiskinan",
-      "description": "Pendapatan = 0 (tidak ada penghasilan)",
+      "description": "Income = 0 (no income)",
       "condition": {"field": "pendapatan_ortu", "op": "eq", "value": 0},
       "points": 10,
-      "label": "Poin kemiskinan kritis"
+      "label": "Critical poverty score"
     },
     {
       "id": "A2",
       "category": "kemiskinan",
-      "description": "Pendapatan < Rp 1.000.000",
+      "description": "Income < Rp 1,000,000",
       "condition": {"field": "pendapatan_ortu", "op": "lt", "value": 1000000},
       "points": 8,
-      "label": "Poin kemiskinan sangat tinggi"
+      "label": "Very high poverty score"
     },
     {
       "id": "A3",
       "category": "kemiskinan",
-      "description": "Pendapatan Rp 1.000.000 – 1.999.999",
+      "description": "Income Rp 1,000,000 – 1,999,999",
       "condition": {"field": "pendapatan_ortu", "op": "between", "min": 1000000, "max": 1999999},
       "points": 6,
-      "label": "Poin kemiskinan tinggi"
+      "label": "High poverty score"
     },
     {
       "id": "A4",
       "category": "kemiskinan",
-      "description": "Pendapatan Rp 2.000.000 – 2.999.999",
+      "description": "Income Rp 2,000,000 – 2,999,999",
       "condition": {"field": "pendapatan_ortu", "op": "between", "min": 2000000, "max": 2999999},
       "points": 4,
-      "label": "Poin kemiskinan sedang"
+      "label": "Moderate poverty score"
     },
     {
       "id": "A5",
       "category": "kemiskinan",
-      "description": "Pendapatan Rp 3.000.000 – 4.500.000",
+      "description": "Income Rp 3,000,000 – 4,500,000",
       "condition": {"field": "pendapatan_ortu", "op": "between", "min": 3000000, "max": 4500000},
       "points": 2,
-      "label": "Poin kemiskinan rendah"
+      "label": "Low poverty score"
     },
     {
       "id": "B1",
       "category": "tanggungan",
-      "description": "Tanggungan >= 4 anak sekolah",
+      "description": "4 dependents",
       "condition": {"field": "jumlah_tanggungan", "op": "gte", "value": 4},
       "points": 6,
-      "label": "Poin tanggungan sangat tinggi"
+      "label": "Very high dependent burden"
     },
     {
       "id": "B2",
       "category": "tanggungan",
-      "description": "Tanggungan = 3 anak sekolah",
+      "description": "3 dependents",
       "condition": {"field": "jumlah_tanggungan", "op": "eq", "value": 3},
       "points": 4,
-      "label": "Poin tanggungan tinggi"
+      "label": "High dependent burden"
     },
     {
       "id": "B3",
       "category": "tanggungan",
-      "description": "Tanggungan = 2 anak sekolah",
+      "description": "2 dependents",
       "condition": {"field": "jumlah_tanggungan", "op": "eq", "value": 2},
       "points": 2,
-      "label": "Poin tanggungan sedang"
+      "label": "Moderate dependent burden"
     },
     {
       "id": "C1",
       "category": "infrastruktur",
-      "description": "Tagihan listrik = 0 / tidak punya listrik",
+      "description": "Electricity bill = 0 / no electricity",
       "condition": {"field": "tagihan_listrik", "op": "eq", "value": 0},
       "points": 6,
-      "label": "Poin keterbatasan ekstrem"
+      "label": "Extreme infrastructure limitation"
     },
     {
       "id": "C2",
       "category": "infrastruktur",
-      "description": "Tagihan listrik < Rp 100.000 / bulan",
+      "description": "Electricity bill < Rp 100,000 / month",
       "condition": {"field": "tagihan_listrik", "op": "lt", "value": 100000},
       "points": 4,
-      "label": "Poin keterbatasan biaya tinggi"
+      "label": "High economic limitation"
     },
     {
       "id": "C3",
       "category": "infrastruktur",
-      "description": "Tagihan listrik Rp 100.000 – 199.999 / bulan",
+      "description": "Electricity bill Rp 100,000 – 199,999 / month",
       "condition": {"field": "tagihan_listrik", "op": "between", "min": 100000, "max": 199999},
       "points": 2,
-      "label": "Poin keterbatasan biaya sedang"
+      "label": "Moderate economic limitation"
     },
     {
       "id": "C4",
       "category": "infrastruktur",
-      "description": "Tagihan listrik Rp 200.000 – 350.000 / bulan",
+      "description": "Electricity bill Rp 200,000 – 350,000 / month",
       "condition": {"field": "tagihan_listrik", "op": "between", "min": 200000, "max": 350000},
       "points": 1,
-      "label": "Poin keterbatasan biaya rendah"
+      "label": "Low economic limitation"
     },
     {
       "id": "C5",
       "category": "infrastruktur",
-      "description": "Wattage listrik terpasang = 450 VA",
+      "description": "Installed electricity = 450 VA",
       "condition": {"field": "wattage_listrik", "op": "eq", "value": 450},
       "points": 5,
-      "label": "Poin keterbatasan infrastruktur tinggi"
+      "label": "High infrastructure limitation"
     },
     {
       "id": "C6",
       "category": "infrastruktur",
-      "description": "Wattage listrik terpasang = 900 VA",
+      "description": "Installed electricity = 900 VA",
       "condition": {"field": "wattage_listrik", "op": "eq", "value": 900},
       "points": 3,
-      "label": "Poin keterbatasan infrastruktur sedang"
+      "label": "Moderate infrastructure limitation"
     },
     {
       "id": "C7",
       "category": "infrastruktur",
-      "description": "Wattage listrik terpasang = 1300 VA",
+      "description": "Installed electricity = 1300 VA",
       "condition": {"field": "wattage_listrik", "op": "eq", "value": 1300},
       "points": 1,
-      "label": "Poin keterbatasan infrastruktur rendah"
+      "label": "Low infrastructure limitation"
     },
     {
       "id": "D1",
       "category": "sosial",
-      "description": "Status orang tua = Yatim-Piatu",
+      "description": "Parent status = Both parents deceased",
       "condition": {"field": "status_ortu", "op": "eq", "value": "yatim_piatu"},
       "points": 5,
-      "label": "Poin kondisi keluarga kritis"
+      "label": "Critical family condition"
     },
     {
       "id": "D2",
       "category": "sosial",
-      "description": "Status orang tua = Yatim atau Piatu",
+      "description": "Parent status = Father or mother deceased",
       "condition": {"field": "status_ortu", "op": "in", "values": ["yatim", "piatu"]},
       "points": 3,
-      "label": "Poin kondisi keluarga berat"
+      "label": "Severe family condition"
     },
     {
       "id": "D3",
       "category": "sosial",
-      "description": "Pekerjaan orang tua = Tidak Bekerja",
+      "description": "Parent occupation = Unemployed",
       "condition": {"field": "pekerjaan_ortu", "op": "eq", "value": "tidak_bekerja"},
       "points": 5,
-      "label": "Poin sektor rentan kritis"
+      "label": "Critical vulnerable sector"
     },
     {
       "id": "D4",
       "category": "sosial",
-      "description": "Pekerjaan orang tua = Buruh / Petani",
+      "description": "Parent occupation = Laborer / Farmer",
       "condition": {"field": "pekerjaan_ortu", "op": "eq", "value": "buruh_petani"},
       "points": 3,
-      "label": "Poin sektor rentan tinggi"
+      "label": "High vulnerable sector"
     },
     {
       "id": "D5",
       "category": "sosial",
-      "description": "Pekerjaan orang tua = Pedagang Kecil",
+      "description": "Parent occupation = Small Trader",
       "condition": {"field": "pekerjaan_ortu", "op": "eq", "value": "pedagang_kecil"},
       "points": 2,
-      "label": "Poin sektor rentan rendah"
+      "label": "Moderate vulnerable sector"
     },
     {
       "id": "E1",
       "category": "prestasi",
-      "description": "IPK >= 3.7 atau nilai rata-rata >= 90",
+      "description": "GPA >= 3.7",
       "condition": {"field": "ipk", "op": "gte_scaled", "value_4scale": 3.7, "value_100scale": 90},
       "points": 5,
-      "label": "Poin prestasi sangat tinggi"
+      "label": "Excellent academic achievement"
     },
     {
       "id": "E2",
       "category": "prestasi",
-      "description": "IPK 3.5 – 3.69 atau nilai 85 – 89",
+      "description": "GPA 3.5 – 3.69",
       "condition": {"field": "ipk", "op": "between_scaled", "min_4scale": 3.5, "max_4scale": 3.69, "min_100scale": 85, "max_100scale": 89},
       "points": 4,
-      "label": "Poin prestasi tinggi"
+      "label": "Very good academic achievement"
     },
     {
       "id": "E3",
       "category": "prestasi",
-      "description": "IPK 3.0 – 3.49 atau nilai 75 – 84",
+      "description": "GPA 3.0 – 3.49",
       "condition": {"field": "ipk", "op": "between_scaled", "min_4scale": 3.0, "max_4scale": 3.49, "min_100scale": 75, "max_100scale": 84},
       "points": 2,
-      "label": "Poin prestasi sedang"
+      "label": "Good academic achievement"
     },
     {
       "id": "E4",
       "category": "prestasi",
-      "description": "IPK 2.5 – 2.99 atau nilai 65 – 74",
+      "description": "GPA 2.5 – 2.99",
       "condition": {"field": "ipk", "op": "between_scaled", "min_4scale": 2.5, "max_4scale": 2.99, "min_100scale": 65, "max_100scale": 74},
       "points": 1,
-      "label": "Poin prestasi rendah"
+      "label": "Satisfactory academic achievement"
     },
     {
       "id": "E5",
       "category": "prestasi",
-      "description": "Sedang menerima beasiswa lain = Ya",
+      "description": "Currently receiving another scholarship = Yes",
       "condition": {"field": "bantuan_lain", "op": "eq", "value": true},
       "points": -8,
-      "label": "Pengurang prioritas (beasiswa lain aktif)"
+      "label": "Priority deduction (active scholarship)"
     }
   ],
   "anomaly_rules": [
     {
       "id": "ANO1",
-      "description": "Wattage 450VA tapi pendapatan > Rp 5.000.000 — tidak konsisten",
+      "description": "450 VA electricity but income > Rp 5,000,000 — inconsistent data",
       "conditions": [
         {"field": "wattage_listrik", "op": "eq", "value": 450},
         {"field": "pendapatan_ortu", "op": "gt", "value": 5000000}
@@ -216,7 +216,7 @@
     },
     {
       "id": "ANO2",
-      "description": "Pendapatan = 0 tapi tagihan listrik > Rp 500.000 — tidak konsisten",
+      "description": "Income = 0 but electricity bill > Rp 500,000 — inconsistent data",
       "conditions": [
         {"field": "pendapatan_ortu", "op": "eq", "value": 0},
         {"field": "tagihan_listrik", "op": "gt", "value": 500000}
@@ -224,7 +224,7 @@
     },
     {
       "id": "ANO3",
-      "description": "Pendapatan = 0 tapi wattage >= 2200 VA — tidak konsisten",
+      "description": "Income = 0 but electricity >= 2200 VA — inconsistent data",
       "conditions": [
         {"field": "pendapatan_ortu", "op": "eq", "value": 0},
         {"field": "wattage_listrik", "op": "gte", "value": 2200}

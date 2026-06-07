@@ -57,7 +57,7 @@ a:hover { text-decoration: underline; }
 }
 .navbar-brand { font-weight: 700; font-size: 17px; color: var(--gray-900); display: flex; align-items: center; gap: 8px; }
 .navbar-brand .dot { width: 8px; height: 8px; background: var(--blue); border-radius: 50%; display: inline-block; }
-.navbar-links { display: flex; gap: 20px; }
+.navbar-links { display: flex; gap: 20px; align-items: center; }
 .navbar-links a { font-size: 14px; color: var(--gray-600); font-weight: 500; }
 .navbar-links a:hover { color: var(--blue); text-decoration: none; }
 .navbar-links a.active { color: var(--blue); }
