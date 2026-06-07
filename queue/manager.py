@@ -89,11 +89,27 @@ def rerank_all(
     eligible = [a for a in applicants if a.status != STATUS_DISQUALIFIED]
     eligible.sort(key=lambda a: a.total_skor, reverse=True)
 
-    for rank_zero, applicant in enumerate(eligible):
-        rank = rank_zero + 1
-        status, q_rank = _assign_status(rank, quota)
-        applicant.queue_rank = q_rank
-        applicant.status = status
+    wl_slots = _waiting_list_slots(quota)
+    cutoff_score = eligible[quota - 1].total_skor if len(eligible) >= quota else None
+
+    rank = 0
+    wl_count = 0
+    below_cutoff = False
+
+    for applicant in eligible:
+        rank += 1
+        if not below_cutoff and (cutoff_score is None or applicant.total_skor >= cutoff_score):
+            applicant.queue_rank = rank
+            applicant.status = STATUS_QUALIFIED
+        else:
+            below_cutoff = True
+            wl_count += 1
+            if wl_count <= wl_slots:
+                applicant.queue_rank = rank
+                applicant.status = STATUS_WAITING_LIST
+            else:
+                applicant.queue_rank = None
+                applicant.status = STATUS_REJECTED
 
     return applicants
 
@@ -182,12 +198,32 @@ def _is_sqlite(conn) -> bool:
 def _rerank_updates(rows: list, quota: int) -> list[tuple]:
     """
     Given sorted (app_id, score) rows, return list of (status, queue_rank, app_id) updates.
+    Ties at the quota boundary are expanded: all applicants sharing the cutoff score
+    are qualified, so admin handles the oversized pool manually.
     """
+    if not rows:
+        return []
+
+    wl_slots = _waiting_list_slots(quota)
+    cutoff_score = rows[quota - 1][1] if len(rows) >= quota else None
+
     updates = []
-    for rank_zero, (app_id, _) in enumerate(rows):
-        rank = rank_zero + 1
-        status, q_rank = _assign_status(rank, quota)
-        updates.append((status, q_rank, app_id))
+    rank = 0
+    wl_count = 0
+    below_cutoff = False
+
+    for app_id, score in rows:
+        rank += 1
+        if not below_cutoff and (cutoff_score is None or score >= cutoff_score):
+            updates.append((STATUS_QUALIFIED, rank, app_id))
+        else:
+            below_cutoff = True
+            wl_count += 1
+            if wl_count <= wl_slots:
+                updates.append((STATUS_WAITING_LIST, rank, app_id))
+            else:
+                updates.append((STATUS_REJECTED, None, app_id))
+
     return updates
 
 
@@ -312,11 +348,16 @@ def db_disqualify(
     rank_updates = []
     history_inserts = []
 
-    for rank_zero, (app_id, _, old_rank) in enumerate(rows):
-        new_rank = rank_zero + 1
+    # Pre-compute tie-aware statuses for the announced case
+    if announced:
+        status_map = {
+            app_id: (status, q_rank)
+            for status, q_rank, app_id in _rerank_updates([(r[0], r[1]) for r in rows], quota)
+        }
 
+    for rank_zero, (app_id, _, old_rank) in enumerate(rows):
         if announced:
-            new_status, new_rank_val = _assign_status(new_rank, quota)
+            new_status, new_rank_val = status_map[app_id]
         else:
             # Pre-announcement: keep everything as pending
             new_status = STATUS_PENDING
