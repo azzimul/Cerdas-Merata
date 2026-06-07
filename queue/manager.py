@@ -297,10 +297,6 @@ def db_rerank_post_announce(conn, quota: int = DEFAULT_QUOTA) -> None:
     conn.commit()
 
 
-def db_rerank_all(conn, quota: int = DEFAULT_QUOTA) -> None:
-    """Legacy alias — kept for backward compatibility. Calls db_rerank_post_announce."""
-    db_rerank_post_announce(conn, quota)
-
 
 def db_disqualify(
     conn,
@@ -363,9 +359,10 @@ def db_disqualify(
             new_status = STATUS_PENDING
             new_rank_val = None
 
+        position = rank_zero + 1
         if old_rank != new_rank_val:
-            old_for_history = old_rank if old_rank is not None else (new_rank + 1)
-            new_for_history = new_rank_val if new_rank_val is not None else (old_rank + 1 if old_rank else new_rank)
+            old_for_history = old_rank if old_rank is not None else position + 1
+            new_for_history = new_rank_val if new_rank_val is not None else position
 
             promoted.append(RankChange(
                 application_id=app_id,

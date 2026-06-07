@@ -16,9 +16,9 @@ from flask import Flask, jsonify, request, Response, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from db.connection import USE_SQLITE, get_conn, row_to_dict
+from db.connection import USE_SQLITE, get_conn
 from reasoning.engine import run as reasoning_run
-from queue.manager import db_disqualify, db_rank_and_announce, db_rerank_post_announce
+from queue.manager import db_disqualify, db_rank_and_announce
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend")
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
@@ -502,9 +502,7 @@ def admin_list():
         sql += " ORDER BY COALESCE(a.queue_rank, 9999), r.total_skor DESC NULLS LAST" if not USE_SQLITE else \
                " ORDER BY COALESCE(a.queue_rank, 9999), COALESCE(r.total_skor, 0) DESC"
 
-        _execute(cur, sql, params) if params else cur.execute(
-            sql.replace("%s", "?") if USE_SQLITE else sql
-        )
+        _execute(cur, sql, params or [])
         rows = cur.fetchall()
 
         cols = ["id","nama_pendaftar","status_aplikasi","queue_rank","created_at",
@@ -638,10 +636,10 @@ def admin_reset():
     try:
         cur = conn.cursor()
         # Delete in dependency order to avoid FK violations
-        cur.execute("DELETE FROM rank_history" if not USE_SQLITE else "DELETE FROM rank_history")
-        cur.execute("DELETE FROM appeals")
-        cur.execute("DELETE FROM results")
-        cur.execute("DELETE FROM applications")
+        _execute(cur, "DELETE FROM rank_history")
+        _execute(cur, "DELETE FROM appeals")
+        _execute(cur, "DELETE FROM results")
+        _execute(cur, "DELETE FROM applications")
         _execute(cur, "UPDATE system_config SET value = 'false', updated_at = %s WHERE key = 'results_announced'",
                  (_now_iso(),))
         conn.commit()

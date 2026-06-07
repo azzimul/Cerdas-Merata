@@ -153,7 +153,7 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument("--count", "-n", type=int, default=100,
-                        help="DUMMY Number of records to generate (default: 50)")
+                        help="Number of records to generate (default: 100)")
     parser.add_argument("--output", "-o", default="demo_applicants.csv",
                         help="Output CSV filename (default: demo_applicants.csv)")
     parser.add_argument("--seed", type=int, default=None,

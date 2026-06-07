@@ -3,7 +3,6 @@ DB connection — PostgreSQL (default) or SQLite (USE_SQLITE=1 for offline demo)
 """
 
 import os
-import json
 
 USE_SQLITE = os.getenv("USE_SQLITE", "0") == "1"
 
@@ -125,15 +124,3 @@ else:
         return conn
 
 
-def row_to_dict(row) -> dict:
-    """Convert sqlite3.Row or psycopg2 row to a plain dict."""
-    if row is None:
-        return None
-    d = dict(row)
-    for key in ("skor_per_kategori", "reasoning_trace", "anomaly_reasons"):
-        if key in d and isinstance(d[key], str):
-            try:
-                d[key] = json.loads(d[key])
-            except Exception:
-                pass
-    return d

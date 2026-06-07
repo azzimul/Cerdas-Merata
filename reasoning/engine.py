@@ -6,7 +6,6 @@ Membaca rules dari rules.json, mengevaluasi fakta siswa, menghasilkan skor + rea
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any
 
 RULES_PATH = os.path.join(os.path.dirname(__file__), "rules.json")
 
