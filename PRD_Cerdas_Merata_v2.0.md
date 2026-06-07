@@ -8,7 +8,7 @@ Scholarship Domain | Reasoning + Waiting List Queue | Forward Chaining
 
 | Attribute | Detail |
 |-----------|--------|
-| Document Version | v2.2 — Override consolidation, closed-state, rule cleanup, admin tooling |
+| Document Version | v2.3 — Tie-expansion at quota boundary |
 | Date | June 2026 |
 | Domain | Education — Scholarship Program |
 | Core Algorithm | Forward Chaining Reasoning + Waiting List Queue System |
@@ -197,15 +197,18 @@ Anomalies flag the application for manual admin review but do not automatically 
 **Announcement (admin action):**
 1. Admin sets quota (configurable, default 50)
 2. Admin clicks "Announce Results"
-3. System batch-assigns statuses:
-   - Positions 1 – quota → **Qualified**
-   - Positions quota+1 – quota+⌈quota×0.20⌉ → **Waiting List**
+3. System batch-assigns statuses by score (descending):
+   - Score ≥ cutoff score (score at quota position) → **Qualified** *(see tie rule below)*
+   - Next ⌈quota×0.20⌉ positions → **Waiting List**
    - Remaining → **Rejected**
 4. `results_announced` flag set to `true` in system_config
 5. Applicants refreshing their result page now see their actual status
 
+**Tie rule at quota boundary:**
+If multiple applicants share the same score as the applicant at position N (the quota cutoff), all of them are promoted to **Qualified** — the qualified pool expands beyond the quota. The waiting list begins at the first applicant scoring below the cutoff. Admin is expected to review the oversized qualified pool and use Override to demote applicants as needed.
+
 **Post-announcement disqualification cascade:**
-- Admin disqualifies a Qualified applicant → top Waiting List person becomes Qualified
+- Admin disqualifies a Qualified applicant → top Waiting List person becomes Qualified (tie-expansion applies to the rerank as well)
 - Admin disqualifies a Waiting List applicant → top Rejected person becomes Waiting List
 - All rank changes recorded in `rank_history` for audit
 
@@ -219,7 +222,7 @@ Anomalies flag the application for manual admin review but do not automatically 
 | Status | Description |
 |--------|-------------|
 | `pending` | Submitted, awaiting announcement |
-| `qualified` | Selected — in top N positions (N = quota) |
+| `qualified` | Selected — score at or above the quota cutoff score (may exceed N slots if tied) |
 | `waiting_list` | In next 20% of quota; promoted if a qualified is disqualified |
 | `rejected` | Score below waiting list threshold |
 | `disqualified` | Admin-flagged for fraud / data integrity violation |
