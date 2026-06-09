@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash
 
 from db.connection import USE_SQLITE, get_conn
 from reasoning.engine import run as reasoning_run
-from queue.manager import db_disqualify, db_rank_and_announce
+from queue.manager import db_disqualify, db_rank_and_announce, STATUS_QUALIFIED, STATUS_WAITING_LIST
 from helpers import (
     _execute, _json_val, _now_iso,
     _get_config, _set_config, _validate_apply,
@@ -18,6 +18,31 @@ ADMIN_ID   = os.getenv("ADMIN_ID", "admin01")
 ADMIN_PASS = os.getenv("ADMIN_PASS", "admin123")
 
 bp = Blueprint("admin", __name__)
+
+
+def _fill_qualified_slots(conn, cur, quota: int) -> None:
+    """Promote waiting_list applicants to fill any open qualified slots up to quota."""
+    _execute(cur, "SELECT COUNT(*) FROM applications WHERE status_aplikasi = %s", (STATUS_QUALIFIED,))
+    qualified_count = cur.fetchone()[0]
+
+    while qualified_count < quota:
+        _execute(cur, """
+            SELECT a.id FROM applications a
+            JOIN results r ON r.application_id = a.id
+            WHERE a.status_aplikasi = %s
+            ORDER BY COALESCE(a.queue_rank, 9999) ASC, r.total_skor DESC
+            LIMIT 1
+        """, (STATUS_WAITING_LIST,))
+        row = cur.fetchone()
+        if not row:
+            break
+
+        promoted_id = row[0]
+        _execute(cur, "UPDATE applications SET status_aplikasi = %s, queue_rank = %s WHERE id = %s",
+                 (STATUS_QUALIFIED, qualified_count + 1, promoted_id))
+        _execute(cur, "UPDATE results SET status_keputusan = %s WHERE application_id = %s",
+                 (STATUS_QUALIFIED, promoted_id))
+        qualified_count += 1
 
 
 @bp.get("/api/admin/config")
@@ -191,6 +216,14 @@ def admin_override(app_id):
             SET status_keputusan = %s, admin_override = %s, override_reason = %s
             WHERE application_id = %s
         """, (status, 1 if USE_SQLITE else True, reason, app_id))
+
+        # If a qualified slot was freed, promote from waiting_list
+        if status != "qualified":
+            announced = _get_config(conn, "results_announced", "false") == "true"
+            if announced:
+                quota = int(_get_config(conn, "quota", "50"))
+                _fill_qualified_slots(conn, cur, quota)
+
         conn.commit()
         return jsonify({"ok": True})
     except Exception as e:

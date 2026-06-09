@@ -380,6 +380,8 @@ def db_disqualify(
         rank_updates.append((new_status, new_rank_val, app_id))
 
     cur.executemany(_q("UPDATE applications SET status_aplikasi = %s, queue_rank = %s WHERE id = %s", conn), rank_updates)
+    cur.executemany(_q("UPDATE results SET status_keputusan = %s WHERE application_id = %s", conn),
+                    [(new_status, app_id) for new_status, _, app_id in rank_updates])
 
     if history_inserts:
         cur.executemany(_q("""
